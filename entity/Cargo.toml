@@ -1,0 +1,17 @@
+[package]
+name = "entity"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "entity"
+path = "src/mod.rs"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+sea-orm = { workspace = true, features = [
+    "debug-print",
+    "runtime-tokio-native-tls",
+    "sqlx-postgres",
+] }
