@@ -2,14 +2,16 @@
 
 use super::sea_orm_active_enums::TaskStatus;
 use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "task")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub github_repo_id: i64,
-    pub points: Option<i32>,
+    pub github_issue_id: i64,
+    pub score: i32,
     pub task_status: TaskStatus,
     pub student_github_id: Option<i64>,
     pub mentor_github_id: i64,

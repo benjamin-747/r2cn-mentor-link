@@ -2,7 +2,7 @@ sea-orm-cli migrate generate
 
 
 # Generate entity files
-sea-orm-cli generate entity -u protocol://username:password@localhost/bakery -o entity/src
+sea-orm-cli generate entity -u postgres://postgres:postgres@localhost/mentor_link -o entity/src --with-serde both
 
 
 
