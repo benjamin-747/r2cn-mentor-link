@@ -9,6 +9,7 @@ use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
 use service::{storage::task_stg::TaskStorage, Context};
 use tower_cookies::CookieManagerLayer;
+use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
@@ -35,6 +36,7 @@ async fn start() -> anyhow::Result<()> {
     let app = Router::new()
         .nest("/api/v1/", api_router)
         .layer(CookieManagerLayer::new())
+        .layer(TraceLayer::new_for_http())
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(&server_url).await.unwrap();

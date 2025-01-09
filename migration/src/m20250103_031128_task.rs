@@ -12,7 +12,8 @@ impl MigrationTrait for Migration {
             .create_type(
                 Type::create()
                     .as_enum(Task::TaskStatus)
-                    .values(TaskStatusVariants::iter()).to_owned()
+                    .values(TaskStatusVariants::iter())
+                    .to_owned(),
             )
             .await?;
 
@@ -23,7 +24,8 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(pk_auto(Task::Id))
                     .col(big_integer(Task::GithubRepoId))
-                    .col(integer_null(Task::Points))
+                    .col(big_integer(Task::GithubIssueId))
+                    .col(integer(Task::Score))
                     .col(enumeration(
                         Task::TaskStatus,
                         Alias::new("task_status"),
@@ -35,13 +37,33 @@ impl MigrationTrait for Migration {
                     .col(date_time(Task::UpdateAt))
                     .to_owned(),
             )
-            .await
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx-task_issue_id")
+                    .unique()
+                    .table(Task::Table)
+                    .col(Task::GithubIssueId)
+                    .to_owned(),
+            )
+            .await?;
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
+            .drop_index(Index::drop().name("idx-task_issue_id").to_owned())
+            .await?;
+        manager
             .drop_table(Table::drop().table(Task::Table).to_owned())
-            .await
+            .await?;
+        manager
+            .drop_type(Type::drop().if_exists().name(Task::TaskStatus).to_owned())
+            .await?;
+        Ok(())
     }
 }
 
@@ -50,8 +72,9 @@ impl MigrationTrait for Migration {
 enum Task {
     Table,
     Id,
+    GithubIssueId,
     GithubRepoId,
-    Points,
+    Score,
     TaskStatus,
     StudentGithubId,
     MentorGithubId,

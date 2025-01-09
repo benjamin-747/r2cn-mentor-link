@@ -67,8 +67,10 @@ async fn app_auth() -> Result<AppAuth, Error> {
     let expire_time = ten_minutes_later.timestamp();
     let nonce = generate_random_string();
 
-    let app_id = env::var("HUAWEI_MEETING_APP_ID").expect("HUAWEI_MEETING_APP_ID is not set in .env file");
-    let app_key = env::var("HUAWEI_MEETING_APP_KEY").expect("HUAWEI_MEETING_APP_KEY is not set in .env file");
+    let app_id =
+        env::var("HUAWEI_MEETING_APP_ID").expect("HUAWEI_MEETING_APP_ID is not set in .env file");
+    let app_key =
+        env::var("HUAWEI_MEETING_APP_KEY").expect("HUAWEI_MEETING_APP_KEY is not set in .env file");
     tracing::warn!("nonce is: {}, expire_time is: {}", nonce, expire_time);
 
     let user_id = "afc560f67c484ce785818078adee6193";
