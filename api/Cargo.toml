@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [[bin]]
-name = "api"
+name = "mentor-link-api"
 path = "src/lib.rs"
 
 [dependencies]
