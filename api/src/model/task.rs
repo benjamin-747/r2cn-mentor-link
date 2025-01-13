@@ -7,7 +7,7 @@ pub struct NewTask {
     pub github_repo_id: i64,
     pub github_issue_id: i64,
     pub score: i32,
-    pub mentor_github_id: i64,
+    pub mentor_github_login: String,
 }
 
 impl From<NewTask> for task::ActiveModel {
@@ -18,8 +18,8 @@ impl From<NewTask> for task::ActiveModel {
             github_issue_id: Set(value.github_issue_id),
             score: Set(value.score),
             task_status: Set(TaskStatus::Open),
-            mentor_github_id: Set(value.mentor_github_id),
-            student_github_id: NotSet,
+            mentor_github_login: Set(value.mentor_github_login),
+            student_github_login: NotSet,
             create_at: Set(chrono::Utc::now().naive_utc()),
             update_at: Set(chrono::Utc::now().naive_utc()),
         }
@@ -33,8 +33,8 @@ pub struct Task {
     pub github_issue_id: i64,
     pub score: i32,
     pub task_status: TaskStatus,
-    pub student_github_id: Option<i64>,
-    pub mentor_github_id: i64,
+    pub student_github_login: Option<String>,
+    pub mentor_github_login: String,
 }
 
 impl From<task::Model> for Task {
@@ -45,8 +45,8 @@ impl From<task::Model> for Task {
             github_issue_id: value.github_issue_id,
             score: value.score,
             task_status: value.task_status,
-            student_github_id: value.student_github_id,
-            mentor_github_id: value.mentor_github_id,
+            student_github_login: value.student_github_login,
+            mentor_github_login: value.mentor_github_login,
         }
     }
 }
@@ -57,15 +57,7 @@ pub struct SearchTask {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ValidateStudent {
-    pub git_email: String,
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ValidateStudentRes {
-    pub code: i32,
-    pub err_code: i32,
-    #[serde(alias = "studentExist")]
-    pub student_exist: bool,
-    pub message: String,
+pub struct CommandRequest {
+    pub github_issue_id: i64,
+    pub login: String,
 }

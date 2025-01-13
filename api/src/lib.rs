@@ -1,6 +1,7 @@
 mod confernece_router;
 mod model;
 mod task_router;
+mod student_router;
 
 use std::env;
 
@@ -31,7 +32,8 @@ async fn start() -> anyhow::Result<()> {
 
     let api_router = Router::new()
         .merge(confernece_router::routers())
-        .merge(task_router::routers());
+        .merge(task_router::routers())
+        .merge(student_router::routers());
 
     let app = Router::new()
         .nest("/api/v1/", api_router)

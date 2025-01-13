@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use entity::{sea_orm_active_enums::TaskStatus, task};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
 #[derive(Clone)]
 pub struct TaskStorage {
@@ -17,7 +17,10 @@ impl TaskStorage {
         TaskStorage { connection }
     }
 
-    pub async fn new_task(&self, active_model: task::ActiveModel) -> Result<task::Model, anyhow::Error> {
+    pub async fn new_task(
+        &self,
+        active_model: task::ActiveModel,
+    ) -> Result<task::Model, anyhow::Error> {
         let task = active_model.insert(self.get_connection()).await?;
         Ok(task)
     }
@@ -45,4 +48,78 @@ impl TaskStorage {
             .await?;
         Ok(tasks)
     }
+
+    pub async fn search_student_task(
+        &self,
+        login: String,
+        status: Vec<TaskStatus>,
+    ) -> Result<Option<task::Model>, anyhow::Error> {
+        let tasks = task::Entity::find()
+            .filter(task::Column::StudentGithubLogin.eq(login))
+            .filter(task::Column::TaskStatus.is_in(status))
+            .one(self.get_connection())
+            .await?;
+        Ok(tasks)
+    }
+
+    pub async fn request_assign(
+        &self,
+        github_issue_id: i64,
+        login: String,
+    ) -> Result<task::Model, anyhow::Error> {
+        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
+        let mut task: task::ActiveModel = task.unwrap().into();
+        task.student_github_login = Set(Some(login));
+        task.task_status = Set(TaskStatus::RequestAssign);
+        task.update_at = Set(chrono::Utc::now().naive_utc());
+
+        Ok(task.update(self.get_connection()).await?)
+    }
+
+    pub async fn release_task(
+        &self,
+        github_issue_id: i64,
+    ) -> Result<task::Model, anyhow::Error> {
+        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
+        let mut task: task::ActiveModel = task.unwrap().into();
+        task.student_github_login = Set(None);
+        task.task_status = Set(TaskStatus::Open);
+        task.update_at = Set(chrono::Utc::now().naive_utc());
+        Ok(task.update(self.get_connection()).await?)
+    }
+
+    pub async fn intern_approve(
+        &self,
+        github_issue_id: i64,
+    ) -> Result<task::Model, anyhow::Error> {
+        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
+        let mut task: task::ActiveModel = task.unwrap().into();
+        task.task_status = Set(TaskStatus::Assigned);
+        task.update_at = Set(chrono::Utc::now().naive_utc());
+        Ok(task.update(self.get_connection()).await?)
+    }
+
+
+    pub async fn request_complete(
+        &self,
+        github_issue_id: i64,
+    ) -> Result<task::Model, anyhow::Error> {
+        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
+        let mut task: task::ActiveModel = task.unwrap().into();
+        task.task_status = Set(TaskStatus::RequestFinish);
+        task.update_at = Set(chrono::Utc::now().naive_utc());
+        Ok(task.update(self.get_connection()).await?)
+    }
+
+    pub async fn intern_done(
+        &self,
+        github_issue_id: i64,
+    ) -> Result<task::Model, anyhow::Error> {
+        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
+        let mut task: task::ActiveModel = task.unwrap().into();
+        task.task_status = Set(TaskStatus::Finished);
+        task.update_at = Set(chrono::Utc::now().naive_utc());
+        Ok(task.update(self.get_connection()).await?)
+    }
+
 }
