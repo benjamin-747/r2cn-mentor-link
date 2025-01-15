@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use sea_orm::DatabaseConnection;
-use storage::{conference_stg::ConferenceStorage, huaweimeeting_stg::HuaweiMeetingStorage, task_stg::TaskStorage};
+use storage::{conference_stg::ConferenceStorage, huaweimeeting_stg::HuaweiMeetingStorage, score_stg::ScoreStorage, task_stg::TaskStorage};
 pub mod storage;
 
 #[derive(Clone)]
@@ -27,6 +27,10 @@ impl Context {
     pub fn task_stg(&self) -> TaskStorage {
         self.services.task_stg.clone()
     }
+
+    pub fn score_stg(&self) -> ScoreStorage {
+        self.services.score_stg.clone()
+    }
 }
 
 #[derive(Clone)]
@@ -34,6 +38,7 @@ pub struct Service {
     pub conference_stg: ConferenceStorage,
     pub huaweimeeting_stg: HuaweiMeetingStorage,
     pub task_stg: TaskStorage,
+    pub score_stg: ScoreStorage,
 }
 
 
@@ -42,7 +47,8 @@ impl Service {
         Service {
             conference_stg: ConferenceStorage::new(connection.clone()).await,
             huaweimeeting_stg: HuaweiMeetingStorage::new(connection.clone()).await,
-            task_stg: TaskStorage::new(connection).await,
+            task_stg: TaskStorage::new(connection.clone()).await,
+            score_stg: ScoreStorage::new(connection).await,
         }
     }
 }

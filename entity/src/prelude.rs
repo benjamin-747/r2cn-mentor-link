@@ -2,4 +2,5 @@
 
 pub use super::conference::Entity as Conference;
 pub use super::huawei_meeting::Entity as HuaweiMeeting;
+pub use super::score::Entity as Score;
 pub use super::task::Entity as Task;

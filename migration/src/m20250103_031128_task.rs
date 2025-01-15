@@ -23,6 +23,9 @@ impl MigrationTrait for Migration {
                     .table(Task::Table)
                     .if_not_exists()
                     .col(pk_auto(Task::Id))
+                    .col(string(Task::Owner))
+                    .col(string(Task::Repo))
+                    .col(integer(Task::GithubIssueNumber))
                     .col(big_integer(Task::GithubRepoId))
                     .col(big_integer(Task::GithubIssueId))
                     .col(integer(Task::Score))
@@ -72,6 +75,9 @@ impl MigrationTrait for Migration {
 enum Task {
     Table,
     Id,
+    Owner,
+    Repo,
+    GithubIssueNumber,
     GithubIssueId,
     GithubRepoId,
     Score,

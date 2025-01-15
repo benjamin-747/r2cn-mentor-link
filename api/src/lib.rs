@@ -8,7 +8,7 @@ use std::env;
 use axum::Router;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
-use service::{storage::task_stg::TaskStorage, Context};
+use service::{storage::{score_stg::ScoreStorage, task_stg::TaskStorage}, Context};
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
 
@@ -40,7 +40,7 @@ async fn start() -> anyhow::Result<()> {
         .layer(CookieManagerLayer::new())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
-
+    tracing::info!("{}", server_url);
     let listener = tokio::net::TcpListener::bind(&server_url).await.unwrap();
     axum::serve(listener, app).await?;
 
@@ -55,6 +55,10 @@ struct AppState {
 impl AppState {
     fn task_stg(&self) -> TaskStorage {
         self.context.services.task_stg.clone()
+    }
+
+    fn score_stg(&self) -> ScoreStorage {
+        self.context.services.score_stg.clone()
     }
 }
 

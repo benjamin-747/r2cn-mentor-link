@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NewTask {
+    pub owner: String,
+    pub repo: String,
+    pub github_issue_number: i32,
     pub github_repo_id: i64,
     pub github_issue_id: i64,
     pub score: i32,
@@ -14,6 +17,9 @@ impl From<NewTask> for task::ActiveModel {
     fn from(value: NewTask) -> Self {
         Self {
             id: NotSet,
+            owner: Set(value.owner),
+            repo: Set(value.repo),
+            github_issue_number: Set(value.github_issue_number),
             github_repo_id: Set(value.github_repo_id),
             github_issue_id: Set(value.github_issue_id),
             score: Set(value.score),
@@ -29,6 +35,9 @@ impl From<NewTask> for task::ActiveModel {
 #[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     pub id: i32,
+    pub owner: String,
+    pub repo: String,
+    pub github_issue_number: i32,
     pub github_repo_id: i64,
     pub github_issue_id: i64,
     pub score: i32,
@@ -41,6 +50,9 @@ impl From<task::Model> for Task {
     fn from(value: task::Model) -> Self {
         Self {
             id: value.id,
+            owner: value.owner,
+            repo: value.repo,
+            github_issue_number: value.github_issue_number,
             github_repo_id: value.github_repo_id,
             github_issue_id: value.github_issue_id,
             score: value.score,
@@ -60,4 +72,5 @@ pub struct SearchTask {
 pub struct CommandRequest {
     pub github_issue_id: i64,
     pub login: String,
+    pub github_id: i64,
 }

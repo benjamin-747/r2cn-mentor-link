@@ -3,11 +3,16 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use chrono::{Datelike, Utc};
 use common::{errors::CommonError, model::CommonResult};
-use entity::sea_orm_active_enums::TaskStatus;
+use entity::{score, sea_orm_active_enums::TaskStatus};
+use service::storage::score_stg::ScoreRes;
 
 use crate::{
-    model::task::{CommandRequest, NewTask, SearchTask, Task},
+    model::{
+        score::NewScore,
+        task::{CommandRequest, NewTask, SearchTask, Task},
+    },
     AppState,
 };
 
@@ -58,7 +63,7 @@ async fn search_with_status(
 ) -> Result<Json<CommonResult<Vec<Task>>>, CommonError> {
     let res = state
         .task_stg()
-        .search_task_with_status(json.github_repo_id, processing_task_status())
+        .search_task_with_status(json.github_repo_id, TaskStatus::processing_task_status())
         .await;
     let res = match res {
         Ok(model) => {
@@ -131,21 +136,39 @@ async fn request_complete(
 async fn intern_done(
     state: State<AppState>,
     Json(json): Json<CommandRequest>,
-) -> Result<Json<CommonResult<bool>>, CommonError> {
-    let res = state.task_stg().intern_done(json.github_issue_id).await;
-
-    let res = match res {
-        Ok(_) => CommonResult::success(Some(true)),
-        Err(err) => CommonResult::failed(&err.to_string()),
+) -> Result<Json<CommonResult<score::Model>>, CommonError> {
+    let task = state
+        .task_stg()
+        .intern_done(json.github_issue_id)
+        .await
+        .unwrap();
+    let score_stg = state.score_stg();
+    let date = Utc::now();
+    let current_score = score_stg
+        .get_score(date.year(), date.month() as i32, json.login.clone())
+        .await
+        .unwrap();
+    let res = if let Some(mut score) = current_score {
+        score.new_score = score.new_score + task.score;
+        score_stg.update_score(score.clone().into()).await.unwrap();
+        CommonResult::success(Some(score))
+    } else {
+        let last_score = score_stg
+            .get_latest_score_by_login(json.login.clone())
+            .await
+            .unwrap();
+        let mut new_score = NewScore {
+            score: task.score,
+            github_id: json.github_id,
+            github_login: json.login,
+            carryover_score: 0,
+        };
+        if let Some(last_score) = last_score {
+            let score: ScoreRes = last_score.into();
+            new_score.carryover_score = score.score_balance();
+        }
+        let new_score = score_stg.insert_score(new_score.into()).await.unwrap();
+        CommonResult::success(Some(new_score))
     };
     Ok(Json(res))
-}
-
-pub fn processing_task_status() -> Vec<TaskStatus> {
-    vec![
-        TaskStatus::Open,
-        TaskStatus::RequestAssign,
-        TaskStatus::Assigned,
-        TaskStatus::RequestFinish,
-    ]
 }

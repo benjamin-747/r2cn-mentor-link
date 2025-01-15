@@ -5,7 +5,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, IntoActiveModel};
 
 #[derive(Clone)]
 pub struct ConferenceStorage {
-    pub connection: Arc<DatabaseConnection>,
+    connection: Arc<DatabaseConnection>,
 }
 
 impl ConferenceStorage {

@@ -1,14 +1,15 @@
 use std::env;
 
 use axum::{extract::State, routing::post, Json, Router};
-use common::{errors::CommonError, model::CommonResult};
+use chrono::{Datelike, Utc};
+use common::{date::get_last_month, errors::CommonError, model::CommonResult};
+use entity::sea_orm_active_enums::TaskStatus;
 
 use crate::{
     model::{
         student::{SearchStuTask, ValidateStudent, ValidateStudentRes},
         task::Task,
     },
-    task_router::processing_task_status,
     AppState,
 };
 
@@ -17,7 +18,8 @@ pub fn routers() -> Router<AppState> {
         "/student",
         Router::new()
             .route("/task", post(get_student_task))
-            .route("/validate", post(validate_student)),
+            .route("/validate", post(validate_student))
+            .route("/calculate-bonus", post(calculate_bonus)),
     )
 }
 
@@ -49,7 +51,7 @@ async fn get_student_task(
 ) -> Result<Json<CommonResult<Task>>, CommonError> {
     let res = state
         .task_stg()
-        .search_student_task(json.login, processing_task_status())
+        .search_student_task(json.login, TaskStatus::processing_task_status())
         .await;
     let res = match res {
         Ok(model) => {
@@ -61,5 +63,29 @@ async fn get_student_task(
         }
         Err(err) => CommonResult::failed(&err.to_string()),
     };
+    Ok(Json(res))
+}
+
+async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>>, CommonError> {
+    let now = Utc::now();
+    let res;
+    let last_month = get_last_month(now.naive_utc().into());
+
+    let month_score = state
+        .score_stg()
+        .list_score_by_month(now.year(), now.month() as i32)
+        .await
+        .unwrap();
+    let students: Vec<String> = month_score.iter().map(|x| x.github_login.clone()).collect();
+
+    state.score_stg().calculate_bonus(month_score).await;
+    let last_month_score = state
+        .score_stg()
+        .list_score_by_month(last_month.0, last_month.1)
+        .await
+        .unwrap();
+    
+    res = CommonResult::success(None);
+
     Ok(Json(res))
 }
