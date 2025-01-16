@@ -34,6 +34,8 @@ impl MigrationTrait for Migration {
                         Alias::new("task_status"),
                         TaskStatusVariants::iter(),
                     ))
+                    .col(integer_null(Task::FinishYear))
+                    .col(integer_null(Task::FinishMonth))
                     .col(string_null(Task::StudentGithubLogin))
                     .col(string(Task::MentorGithubLogin))
                     .col(date_time(Task::CreateAt))
@@ -82,6 +84,8 @@ enum Task {
     GithubRepoId,
     Score,
     TaskStatus,
+    FinishYear,
+    FinishMonth,
     StudentGithubLogin,
     MentorGithubLogin,
     CreateAt,

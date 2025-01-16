@@ -68,7 +68,6 @@ async fn get_student_task(
 
 async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>>, CommonError> {
     let now = Utc::now();
-    let res;
     let last_month = get_last_month(now.naive_utc().into());
 
     let month_score = state
@@ -84,8 +83,11 @@ async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>
         .list_score_by_month(last_month.0, last_month.1)
         .await
         .unwrap();
-    
-    res = CommonResult::success(None);
+    state
+        .score_stg()
+        .calculate_unactive_bonus(last_month_score, students)
+        .await
+        .unwrap();
 
-    Ok(Json(res))
+    Ok(Json(CommonResult::success(None)))
 }

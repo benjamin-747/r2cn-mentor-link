@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use chrono::{Datelike, Utc};
+use entity::prelude::Score;
 use entity::score::{self};
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set
+    ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, DatabaseConnection, EntityTrait,
+    QueryFilter, QueryOrder, Set,
 };
-use entity::prelude::Score;
 
 #[derive(Clone)]
 pub struct ScoreStorage {
@@ -92,29 +93,37 @@ impl ScoreStorage {
         }
     }
 
-    pub async fn calculate_unactive_bonus(&self, models: Vec<score::Model>) -> Result<(), anyhow::Error> {
-        let mut save_models =vec![];
+    pub async fn calculate_unactive_bonus(
+        &self,
+        models: Vec<score::Model>,
+        filted: Vec<String>,
+    ) -> Result<(), anyhow::Error> {
+        let mut save_models = vec![];
         for model in models {
-            let score: ScoreRes = model.clone().into();
-            let bonus = score.calculate_bonus();
-            if bonus.0 > 0 {
-                let new_score = score::ActiveModel{
-                    id: NotSet,
-                    github_login: Set(score.github_login.clone()),
-                    github_id: Set(score.github_id),
-                    year: Set(Utc::now().year()),
-                    month: Set(Utc::now().month() as i32),
-                    carryover_score: Set(score.score_balance()),
-                    new_score: Set(0),
-                    consumption_score: Set(bonus.0),
-                    exchanged: Set(Some(bonus.1)),
-                    create_at: Set(chrono::Utc::now().naive_utc()),
-                    update_at: Set(chrono::Utc::now().naive_utc()),
-                };
-                save_models.push(new_score);
+            if !filted.contains(&model.github_login) {
+                let score: ScoreRes = model.clone().into();
+                let bonus = score.calculate_bonus();
+                if bonus.0 > 0 {
+                    let new_score = score::ActiveModel {
+                        id: NotSet,
+                        github_login: Set(score.github_login.clone()),
+                        github_id: Set(score.github_id),
+                        year: Set(Utc::now().year()),
+                        month: Set(Utc::now().month() as i32),
+                        carryover_score: Set(score.score_balance()),
+                        new_score: Set(0),
+                        consumption_score: Set(bonus.0),
+                        exchanged: Set(Some(bonus.1)),
+                        create_at: Set(chrono::Utc::now().naive_utc()),
+                        update_at: Set(chrono::Utc::now().naive_utc()),
+                    };
+                    save_models.push(new_score);
+                }
             }
         }
-        Score::insert_many(save_models).exec(self.get_connection()).await?;
+        Score::insert_many(save_models)
+            .exec(self.get_connection())
+            .await?;
         Ok(())
     }
 }

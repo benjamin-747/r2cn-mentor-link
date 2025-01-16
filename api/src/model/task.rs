@@ -24,6 +24,8 @@ impl From<NewTask> for task::ActiveModel {
             github_issue_id: Set(value.github_issue_id),
             score: Set(value.score),
             task_status: Set(TaskStatus::Open),
+            finish_year: NotSet,
+            finish_month: NotSet,
             mentor_github_login: Set(value.mentor_github_login),
             student_github_login: NotSet,
             create_at: Set(chrono::Utc::now().naive_utc()),

@@ -17,6 +17,8 @@ pub struct Model {
     pub github_issue_id: i64,
     pub score: i32,
     pub task_status: TaskStatus,
+    pub finish_year: Option<i32>,
+    pub finish_month: Option<i32>,
     pub student_github_login: Option<String>,
     pub mentor_github_login: String,
     pub create_at: DateTime,

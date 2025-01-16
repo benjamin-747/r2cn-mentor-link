@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use chrono::{Datelike, Utc};
 use entity::{sea_orm_active_enums::TaskStatus, task};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 
@@ -71,34 +72,27 @@ impl TaskStorage {
         let mut task: task::ActiveModel = task.unwrap().into();
         task.student_github_login = Set(Some(login));
         task.task_status = Set(TaskStatus::RequestAssign);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.update_at = Set(Utc::now().naive_utc());
 
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn release_task(
-        &self,
-        github_issue_id: i64,
-    ) -> Result<task::Model, anyhow::Error> {
+    pub async fn release_task(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
         let mut task: task::ActiveModel = task.unwrap().into();
         task.student_github_login = Set(None);
         task.task_status = Set(TaskStatus::Open);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn intern_approve(
-        &self,
-        github_issue_id: i64,
-    ) -> Result<task::Model, anyhow::Error> {
+    pub async fn intern_approve(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
         let mut task: task::ActiveModel = task.unwrap().into();
         task.task_status = Set(TaskStatus::Assigned);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
-
 
     pub async fn request_complete(
         &self,
@@ -107,19 +101,17 @@ impl TaskStorage {
         let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
         let mut task: task::ActiveModel = task.unwrap().into();
         task.task_status = Set(TaskStatus::RequestFinish);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn intern_done(
-        &self,
-        github_issue_id: i64,
-    ) -> Result<task::Model, anyhow::Error> {
+    pub async fn intern_done(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
         let mut task: task::ActiveModel = task.unwrap().into();
         task.task_status = Set(TaskStatus::Finished);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.finish_year = Set(Some(Utc::now().year()));
+        task.finish_month = Set(Some(Utc::now().month() as i32));
+        task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
-
 }
