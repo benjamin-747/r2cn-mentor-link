@@ -23,6 +23,9 @@ impl MigrationTrait for Migration {
                     .table(Task::Table)
                     .if_not_exists()
                     .col(pk_auto(Task::Id))
+                    .col(string(Task::Owner))
+                    .col(string(Task::Repo))
+                    .col(integer(Task::GithubIssueNumber))
                     .col(big_integer(Task::GithubRepoId))
                     .col(big_integer(Task::GithubIssueId))
                     .col(integer(Task::Score))
@@ -31,7 +34,10 @@ impl MigrationTrait for Migration {
                         Alias::new("task_status"),
                         TaskStatusVariants::iter(),
                     ))
+                    .col(integer_null(Task::FinishYear))
+                    .col(integer_null(Task::FinishMonth))
                     .col(string_null(Task::StudentGithubLogin))
+                    .col(string_null(Task::StudentName))
                     .col(string(Task::MentorGithubLogin))
                     .col(date_time(Task::CreateAt))
                     .col(date_time(Task::UpdateAt))
@@ -72,11 +78,17 @@ impl MigrationTrait for Migration {
 enum Task {
     Table,
     Id,
+    Owner,
+    Repo,
+    GithubIssueNumber,
     GithubIssueId,
     GithubRepoId,
     Score,
     TaskStatus,
+    FinishYear,
+    FinishMonth,
     StudentGithubLogin,
+    StudentName,
     MentorGithubLogin,
     CreateAt,
     UpdateAt,

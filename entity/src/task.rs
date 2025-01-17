@@ -9,12 +9,18 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub owner: String,
+    pub repo: String,
+    pub github_issue_number: i32,
     pub github_repo_id: i64,
     #[sea_orm(unique)]
     pub github_issue_id: i64,
     pub score: i32,
     pub task_status: TaskStatus,
+    pub finish_year: Option<i32>,
+    pub finish_month: Option<i32>,
     pub student_github_login: Option<String>,
+    pub student_name: Option<String>,
     pub mentor_github_login: String,
     pub create_at: DateTime,
     pub update_at: DateTime,

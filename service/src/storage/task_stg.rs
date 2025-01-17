@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
+use chrono::{Datelike, Utc};
 use entity::{sea_orm_active_enums::TaskStatus, task};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
+};
 
 #[derive(Clone)]
 pub struct TaskStorage {
@@ -39,10 +42,12 @@ impl TaskStorage {
     pub async fn search_task_with_status(
         &self,
         github_repo_id: i64,
+        github_mentor_login: String,
         status: Vec<TaskStatus>,
     ) -> Result<Vec<task::Model>, anyhow::Error> {
         let tasks: Vec<task::Model> = task::Entity::find()
             .filter(task::Column::GithubRepoId.eq(github_repo_id))
+            .filter(task::Column::MentorGithubLogin.eq(github_mentor_login))
             .filter(task::Column::TaskStatus.is_in(status))
             .all(self.get_connection())
             .await?;
@@ -66,60 +71,98 @@ impl TaskStorage {
         &self,
         github_issue_id: i64,
         login: String,
+        studnet_name: String,
     ) -> Result<task::Model, anyhow::Error> {
-        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
-        let mut task: task::ActiveModel = task.unwrap().into();
+        let task = self
+            .search_task_with_issue_id(github_issue_id)
+            .await?
+            .ok_or(DbErr::RecordNotFound(format!(
+                "Task not found for issue_id {}",
+                github_issue_id
+            )))?;
+        let mut task: task::ActiveModel = task.into();
         task.student_github_login = Set(Some(login));
+        task.student_name = Set(Some(studnet_name));
         task.task_status = Set(TaskStatus::RequestAssign);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.update_at = Set(Utc::now().naive_utc());
 
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn release_task(
-        &self,
-        github_issue_id: i64,
-    ) -> Result<task::Model, anyhow::Error> {
-        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
-        let mut task: task::ActiveModel = task.unwrap().into();
+    pub async fn release_task(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
+        let task = self
+            .search_task_with_issue_id(github_issue_id)
+            .await?
+            .ok_or(DbErr::RecordNotFound(format!(
+                "Task not found for issue_id {}",
+                github_issue_id
+            )))?;
+        let mut task: task::ActiveModel = task.into();
         task.student_github_login = Set(None);
         task.task_status = Set(TaskStatus::Open);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn intern_approve(
-        &self,
-        github_issue_id: i64,
-    ) -> Result<task::Model, anyhow::Error> {
-        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
-        let mut task: task::ActiveModel = task.unwrap().into();
+    pub async fn intern_approve(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
+        let task = self
+            .search_task_with_issue_id(github_issue_id)
+            .await?
+            .ok_or(DbErr::RecordNotFound(format!(
+                "Task not found for issue_id {}",
+                github_issue_id
+            )))?;
+        let mut task: task::ActiveModel = task.into();
         task.task_status = Set(TaskStatus::Assigned);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
-
 
     pub async fn request_complete(
         &self,
         github_issue_id: i64,
     ) -> Result<task::Model, anyhow::Error> {
-        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
-        let mut task: task::ActiveModel = task.unwrap().into();
+        let task = self
+            .search_task_with_issue_id(github_issue_id)
+            .await?
+            .ok_or(DbErr::RecordNotFound(format!(
+                "Task not found for issue_id {}",
+                github_issue_id
+            )))?;
+        let mut task: task::ActiveModel = task.into();
         task.task_status = Set(TaskStatus::RequestFinish);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn intern_done(
-        &self,
-        github_issue_id: i64,
-    ) -> Result<task::Model, anyhow::Error> {
-        let task: Option<task::Model> = self.search_task_with_issue_id(github_issue_id).await?;
-        let mut task: task::ActiveModel = task.unwrap().into();
+    pub async fn intern_done(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
+        let task = self
+            .search_task_with_issue_id(github_issue_id)
+            .await?
+            .ok_or(DbErr::RecordNotFound(format!(
+                "Task not found for issue_id {}",
+                github_issue_id
+            )))?;
+        let mut task: task::ActiveModel = task.into();
         task.task_status = Set(TaskStatus::Finished);
-        task.update_at = Set(chrono::Utc::now().naive_utc());
+        task.finish_year = Set(Some(Utc::now().year()));
+        task.finish_month = Set(Some(Utc::now().month() as i32));
+        task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
 
+    pub async fn intern_close(&self, github_issue_id: i64) -> Result<(), anyhow::Error> {
+        let task = self
+            .search_task_with_issue_id(github_issue_id)
+            .await?
+            .ok_or(DbErr::RecordNotFound(format!(
+                "Task not found for issue_id {}",
+                github_issue_id
+            )))?;
+        if task.task_status != TaskStatus::Finished {
+            let task: task::ActiveModel = task.into();
+            task.delete(self.get_connection()).await?;
+        }
+        Ok(())
+    }
 }

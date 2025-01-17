@@ -19,10 +19,12 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y libssl-dev ca-certificates
 
-COPY --from=builder /opt/r2cn/target/release/api /usr/local/bin/api
+WORKDIR /opt/r2cn
 
-RUN chmod +x /usr/local/bin/api
+COPY --from=builder /opt/r2cn/target/release/mentor-link-api /usr/local/bin
+
+RUN chmod +x /usr/local/bin/mentor-link-api
 
 VOLUME /opt/r2cn
 
-CMD ["bash", "-c", "exec /usr/local/bin/api"]
+CMD ["/usr/local/bin/mentor-link-api"]

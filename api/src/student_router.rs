@@ -2,13 +2,13 @@ use std::env;
 
 use axum::{extract::State, routing::post, Json, Router};
 use common::{errors::CommonError, model::CommonResult};
+use entity::sea_orm_active_enums::TaskStatus;
 
 use crate::{
     model::{
-        student::{SearchStuTask, ValidateStudent, ValidateStudentRes},
+        student::{OsppValidateStudentRes, SearchStuTask, ValidateStudent, ValidateStudentRes},
         task::Task,
     },
-    task_router::processing_task_status,
     AppState,
 };
 
@@ -24,7 +24,7 @@ pub fn routers() -> Router<AppState> {
 async fn validate_student(
     _: State<AppState>,
     Json(json): Json<ValidateStudent>,
-) -> Result<Json<CommonResult<bool>>, CommonError> {
+) -> Result<Json<CommonResult<ValidateStudentRes>>, CommonError> {
     //call ospp api check status
     let client = reqwest::Client::new();
     let api_host = env::var("OSPP_API_ENDPOINT").unwrap();
@@ -35,9 +35,12 @@ async fn validate_student(
         .unwrap();
     let body = res.text().await.unwrap();
     tracing::debug!("response body:{:?}", body);
-    let res = serde_json::from_str::<ValidateStudentRes>(&body);
+    let res = serde_json::from_str::<OsppValidateStudentRes>(&body);
     let res = match res {
-        Ok(data) => CommonResult::success(Some(data.student_exist)),
+        Ok(data) => CommonResult::success(Some(ValidateStudentRes {
+            success: data.student_exist,
+            student_name: data.su_student_name,
+        })),
         Err(err) => CommonResult::failed(&err.to_string()),
     };
     Ok(Json(res))
@@ -49,7 +52,7 @@ async fn get_student_task(
 ) -> Result<Json<CommonResult<Task>>, CommonError> {
     let res = state
         .task_stg()
-        .search_student_task(json.login, processing_task_status())
+        .search_student_task(json.login, TaskStatus::processing_task_status())
         .await;
     let res = match res {
         Ok(model) => {
