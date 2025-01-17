@@ -1,14 +1,18 @@
 mod confernece_router;
 mod model;
-mod task_router;
+mod score_router;
 mod student_router;
+mod task_router;
 
 use std::env;
 
 use axum::Router;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
-use service::{storage::{score_stg::ScoreStorage, task_stg::TaskStorage}, Context};
+use service::{
+    storage::{score_stg::ScoreStorage, task_stg::TaskStorage},
+    Context,
+};
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
 
@@ -33,7 +37,8 @@ async fn start() -> anyhow::Result<()> {
     let api_router = Router::new()
         .merge(confernece_router::routers())
         .merge(task_router::routers())
-        .merge(student_router::routers());
+        .merge(student_router::routers())
+        .merge(score_router::routers());
 
     let app = Router::new()
         .nest("/api/v1/", api_router)

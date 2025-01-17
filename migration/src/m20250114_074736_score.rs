@@ -13,6 +13,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(pk_auto(Score::Id))
                     .col(string(Score::GithubLogin))
+                    .col(string(Score::StudentName))
                     .col(big_integer(Score::GithubId))
                     .col(integer(Score::Year))
                     .col(integer(Score::Month))
@@ -47,12 +48,14 @@ impl MigrationTrait for Migration {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(DeriveIden)]
 enum Score {
     Table,
     Id,
     GithubLogin,
     GithubId,
+    StudentName,
     Year,
     Month,
     CarryoverScore,

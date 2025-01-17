@@ -82,7 +82,8 @@ impl ScoreStorage {
     pub async fn calculate_bonus(&self, models: Vec<score::Model>) {
         for model in models {
             let score: ScoreRes = model.clone().into();
-            let bonus = score.calculate_bonus();
+            let score_int = score.carryover_score + score.new_score;
+            let bonus = score.calculate_bonus(score_int);
             if bonus.0 > 0 {
                 let mut a_model: score::ActiveModel = model.into();
                 a_model.consumption_score = Set(bonus.0);
@@ -102,15 +103,17 @@ impl ScoreStorage {
         for model in models {
             if !filted.contains(&model.github_login) {
                 let score: ScoreRes = model.clone().into();
-                let bonus = score.calculate_bonus();
+                let score_int = score.score_balance();
+                let bonus = score.calculate_bonus(score_int);
                 if bonus.0 > 0 {
                     let new_score = score::ActiveModel {
                         id: NotSet,
                         github_login: Set(score.github_login.clone()),
+                        student_name: Set(score.student_name.clone()),
                         github_id: Set(score.github_id),
                         year: Set(Utc::now().year()),
                         month: Set(Utc::now().month() as i32),
-                        carryover_score: Set(score.score_balance()),
+                        carryover_score: Set(score_int),
                         new_score: Set(0),
                         consumption_score: Set(bonus.0),
                         exchanged: Set(Some(bonus.1)),
@@ -121,9 +124,11 @@ impl ScoreStorage {
                 }
             }
         }
-        Score::insert_many(save_models)
+        if !save_models.is_empty() {
+            Score::insert_many(save_models)
             .exec(self.get_connection())
             .await?;
+        }
         Ok(())
     }
 }
@@ -131,6 +136,7 @@ impl ScoreStorage {
 pub struct ScoreRes {
     pub id: i32,
     pub github_login: String,
+    pub student_name: String,
     pub github_id: i64,
     pub year: i32,
     pub month: i32,
@@ -145,6 +151,7 @@ impl From<score::Model> for ScoreRes {
         Self {
             id: value.id,
             github_login: value.github_login,
+            student_name: value.student_name,
             github_id: value.github_id,
             year: value.year,
             month: value.month,
@@ -161,16 +168,16 @@ impl ScoreRes {
         self.carryover_score + self.new_score - self.consumption_score
     }
 
-    pub fn calculate_bonus(&self) -> (i32, i32) {
-        if self.score_balance() >= 100 {
+    pub fn calculate_bonus(&self, score: i32) -> (i32, i32) {
+        if score >= 100 {
             return (100, 8000);
-        } else if self.score_balance() >= 80 {
+        } else if score >= 80 {
             return (80, 6000);
-        } else if self.score_balance() >= 60 {
+        } else if score >= 60 {
             return (60, 4000);
-        } else if self.score_balance() >= 40 {
+        } else if score >= 40 {
             return (40, 2000);
-        } else if self.score_balance() >= 20 {
+        } else if score >= 20 {
             return (20, 1000);
         }
         (0, 0)

@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 entity = { workspace = true }
+common = { workspace = true }
 sea-orm = { workspace = true, features = [
     # "debug-print",
     "runtime-tokio-native-tls",

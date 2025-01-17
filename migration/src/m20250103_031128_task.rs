@@ -37,6 +37,7 @@ impl MigrationTrait for Migration {
                     .col(integer_null(Task::FinishYear))
                     .col(integer_null(Task::FinishMonth))
                     .col(string_null(Task::StudentGithubLogin))
+                    .col(string_null(Task::StudentName))
                     .col(string(Task::MentorGithubLogin))
                     .col(date_time(Task::CreateAt))
                     .col(date_time(Task::UpdateAt))
@@ -87,6 +88,7 @@ enum Task {
     FinishYear,
     FinishMonth,
     StudentGithubLogin,
+    StudentName,
     MentorGithubLogin,
     CreateAt,
     UpdateAt,

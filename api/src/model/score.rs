@@ -9,6 +9,7 @@ pub struct NewScore {
     pub carryover_score: i32,
     pub github_id: i64,
     pub github_login: String,
+    pub student_name: String,
 }
 
 impl From<NewScore> for score::ActiveModel {
@@ -16,6 +17,7 @@ impl From<NewScore> for score::ActiveModel {
         Self {
             id: NotSet,
             github_login: Set(value.github_login),
+            student_name: Set(value.student_name),
             github_id: Set(value.github_id),
             year: Set(Utc::now().year()),
             month: Set(Utc::now().month() as i32),
