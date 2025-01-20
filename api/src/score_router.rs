@@ -1,4 +1,12 @@
-use axum::{extract::State, routing::post, Json, Router};
+use std::io::Cursor;
+
+use axum::{
+    body::Body,
+    extract::State,
+    response::Response,
+    routing::{get, post},
+    Json, Router,
+};
 use chrono::{Datelike, Utc};
 use common::{date::get_last_month, errors::CommonError, model::CommonResult};
 use rust_xlsxwriter::Workbook;
@@ -9,12 +17,12 @@ pub fn routers() -> Router<AppState> {
     Router::new().nest(
         "/score",
         Router::new()
-            .route("/excel", post(export_excel))
+            .route("/excel", get(export_excel))
             .route("/calculate-monthly", post(calculate_bonus)),
     )
 }
 
-async fn export_excel(state: State<AppState>) -> Result<(), CommonError> {
+async fn export_excel(state: State<AppState>) -> Result<Response<Body>, CommonError> {
     let now = Utc::now();
 
     let month_score = state
@@ -46,8 +54,24 @@ async fn export_excel(state: State<AppState>) -> Result<(), CommonError> {
         now.year(),
         now.month()
     );
-    workbook.save(file_name).unwrap();
-    Ok(())
+
+    let mut buffer = Cursor::new(Vec::new());
+
+    workbook.save_to_writer(&mut buffer).unwrap();
+    let file_data = buffer.into_inner();
+
+    let resp = Response::builder()
+        .header(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        .header(
+            "Content-Disposition",
+            format!("attachment; filename={}", file_name),
+        )
+        .body(Body::from(file_data))
+        .unwrap();
+    Ok(resp)
 }
 
 async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>>, CommonError> {
