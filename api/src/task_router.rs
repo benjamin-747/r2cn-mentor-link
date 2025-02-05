@@ -154,9 +154,9 @@ async fn intern_done(
         .get_score(date.year(), date.month() as i32, json.login.clone())
         .await
         .unwrap();
-    if let Some( score) = current_score {
+    if let Some(score) = current_score {
         let sum_score = score.new_score + task.score;
-        let mut a_model:score::ActiveModel = score.clone().into();
+        let mut a_model: score::ActiveModel = score.clone().into();
         a_model.new_score = Set(sum_score);
         score_stg.update_score(a_model).await.unwrap();
     } else {

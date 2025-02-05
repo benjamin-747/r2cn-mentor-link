@@ -5,7 +5,7 @@ use axum::{extract::State, http::StatusCode, routing::post, Router};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use chrono::{Datelike, Duration, Local, NaiveDateTime, NaiveTime, Utc, Weekday};
 use hmac::{Hmac, Mac};
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distr::Alphanumeric, Rng};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use sea_orm::TryIntoModel;
 use serde_json::json;
@@ -166,7 +166,7 @@ fn calculate_hmac_sha256(key: &[u8], data: &[u8]) -> String {
 }
 
 fn generate_random_string() -> String {
-    let random_string: String = rand::thread_rng()
+    let random_string: String = rand::rng()
         .sample_iter(&Alphanumeric)
         .take(32)
         .map(char::from)
