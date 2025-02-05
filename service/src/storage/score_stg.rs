@@ -170,11 +170,11 @@ impl ScoreRes {
 
     pub fn calculate_bonus(&self, score: i32) -> (i32, i32) {
         if score >= 100 {
-            return (100, 8000);
+            return (100, 5000);
         } else if score >= 80 {
-            return (80, 6000);
+            return (80, 4000);
         } else if score >= 60 {
-            return (60, 4000);
+            return (60, 3000);
         } else if score >= 40 {
             return (40, 2000);
         } else if score >= 20 {

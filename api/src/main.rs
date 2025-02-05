@@ -7,6 +7,7 @@ mod task_router;
 use std::env;
 
 use axum::Router;
+use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
 use service::{
     storage::{score_stg::ScoreStorage, task_stg::TaskStorage},
@@ -29,7 +30,7 @@ async fn start() -> anyhow::Result<()> {
         .await
         .expect("Database connection failed");
 
-    // Migrator::up(&conn, None).await.unwrap();
+    Migrator::up(&conn, None).await.unwrap();
     let context = Context::new(conn.into()).await;
     let state = AppState { context };
 
