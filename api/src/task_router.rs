@@ -12,7 +12,7 @@ use service::storage::score_stg::ScoreRes;
 use crate::{
     model::{
         score::NewScore,
-        task::{CommandRequest, NewTask, SearchTask, Task},
+        task::{CommandRequest, NewTask, SearchTask, Task, UpdateScoreRequest},
     },
     AppState,
 };
@@ -22,6 +22,7 @@ pub fn routers() -> Router<AppState> {
         "/task",
         Router::new()
             .route("/new", post(new_task))
+            .route("/update-score", post(update_task_score))
             .route("/issue/{:github_issue_id}", get(get_task))
             .route("/search", post(search_with_status))
             .route("/request-assign", post(request_assign))
@@ -40,6 +41,21 @@ async fn new_task(
     let active_model = json.into();
     let res = state.task_stg().new_task(active_model).await.unwrap();
     Ok(Json(CommonResult::success(Some(res.into()))))
+}
+
+async fn update_task_score(
+    state: State<AppState>,
+    Json(json): Json<UpdateScoreRequest>,
+) -> Result<Json<CommonResult<bool>>, CommonError> {
+    let res = state
+        .task_stg()
+        .update_score(json.github_issue_id, json.score)
+        .await;
+    let res = match res {
+        Ok(_) => CommonResult::success(Some(true)),
+        Err(err) => CommonResult::failed(&err.to_string()),
+    };
+    Ok(Json(res))
 }
 
 async fn get_task(

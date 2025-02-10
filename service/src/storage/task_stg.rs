@@ -28,6 +28,24 @@ impl TaskStorage {
         Ok(task)
     }
 
+    pub async fn update_score(
+        &self,
+        github_issue_id: i64,
+        score: i32,
+    ) -> Result<task::Model, anyhow::Error> {
+        let task = self
+            .search_task_with_issue_id(github_issue_id)
+            .await?
+            .ok_or(DbErr::RecordNotFound(format!(
+                "Task not found for issue_id {}",
+                github_issue_id
+            )))?;
+        let mut task: task::ActiveModel = task.into();
+        task.score = Set(score);
+        task.update_at = Set(Utc::now().naive_utc());
+        Ok(task.update(self.get_connection()).await?)
+    }
+
     pub async fn search_task_with_issue_id(
         &self,
         github_issue_id: i64,
