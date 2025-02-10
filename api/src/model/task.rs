@@ -79,3 +79,9 @@ pub struct CommandRequest {
     pub github_id: i64,
     pub student_name: Option<String>,
 }
+
+#[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UpdateScoreRequest {
+    pub github_issue_id: i64,
+    pub score: i32,
+}
