@@ -3,7 +3,6 @@
 pub mod prelude;
 
 pub mod conference;
-pub mod huawei_meeting;
 pub mod score;
 pub mod sea_orm_active_enums;
 pub mod task;

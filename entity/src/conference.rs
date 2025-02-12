@@ -8,14 +8,19 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub conference_id: String,
     pub platform_type: String,
     pub subject: String,
-    pub description: String,
     pub start_time: String,
     pub end_time: String,
     pub conference_state: String,
-    pub conference_link: String,
-    pub host_id: i32,
+    pub language: String,
+    pub scheduser_name: String,
+    pub record_type: i32,
+    pub is_auto_record: i32,
+    pub conf_type: String,
+    pub chair_join_uri: String,
+    pub guest_join_uri: String,
     pub create_at: DateTime,
     pub update_at: DateTime,
 }

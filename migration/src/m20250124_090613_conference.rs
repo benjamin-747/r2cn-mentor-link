@@ -12,14 +12,19 @@ impl MigrationTrait for Migration {
                     .table(Conference::Table)
                     .if_not_exists()
                     .col(pk_auto(Conference::Id))
+                    .col(string(Conference::ConferenceID))
                     .col(string(Conference::PlatformType))
                     .col(string(Conference::Subject))
-                    .col(string(Conference::Description))
                     .col(string(Conference::StartTime))
                     .col(string(Conference::EndTime))
                     .col(string(Conference::ConferenceState))
-                    .col(string(Conference::ConferenceLink))
-                    .col(integer(Conference::HostId))
+                    .col(string(Conference::Language))
+                    .col(string(Conference::ScheduserName))
+                    .col(integer(Conference::RecordType))
+                    .col(integer(Conference::IsAutoRecord))
+                    .col(string(Conference::ConfType))
+                    .col(string(Conference::ChairJoinUri))
+                    .col(string(Conference::GuestJoinUri))
                     .col(date_time(Conference::CreateAt))
                     .col(date_time(Conference::UpdateAt))
                     .to_owned(),
@@ -39,14 +44,19 @@ impl MigrationTrait for Migration {
 enum Conference {
     Table,
     Id,
+    ConferenceID,
     PlatformType,
     Subject,
-    Description,
     StartTime,
     EndTime,
     ConferenceState,
-    ConferenceLink,
-    HostId,
+    Language,
+    ScheduserName,
+    RecordType,
+    IsAutoRecord,
+    ConfType,
+    ChairJoinUri,
+    GuestJoinUri,
     CreateAt,
     UpdateAt,
 }
