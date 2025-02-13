@@ -1,5 +1,5 @@
 use chrono::{Datelike, Utc};
-use entity::score;
+use entity::monthly_score;
 use sea_orm::{ActiveValue::NotSet, Set};
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +12,7 @@ pub struct NewScore {
     pub student_name: String,
 }
 
-impl From<NewScore> for score::ActiveModel {
+impl From<NewScore> for monthly_score::ActiveModel {
     fn from(value: NewScore) -> Self {
         Self {
             id: NotSet,
@@ -31,6 +31,8 @@ impl From<NewScore> for score::ActiveModel {
     }
 }
 
-
-
-
+#[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ExportExcel {
+    pub year: i32,
+    pub month: i32,
+}

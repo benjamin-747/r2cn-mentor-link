@@ -10,7 +10,7 @@ use axum::Router;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
 use service::{
-    storage::{score_stg::ScoreStorage, task_stg::TaskStorage},
+    storage::{score_stg::ScoreStorage, student_stg::StudentStorage, task_stg::TaskStorage},
     Context,
 };
 use tower_cookies::CookieManagerLayer;
@@ -64,6 +64,10 @@ impl AppState {
 
     fn score_stg(&self) -> ScoreStorage {
         self.context.services.score_stg.clone()
+    }
+
+    fn student_stg(&self) -> StudentStorage {
+        self.context.services.student_stg.clone()
     }
 }
 
