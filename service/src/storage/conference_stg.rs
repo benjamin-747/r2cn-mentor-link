@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use entity::conference;
-use sea_orm::{ActiveModelTrait, DatabaseConnection, IntoActiveModel};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
 
 #[derive(Clone)]
 pub struct ConferenceStorage {
@@ -17,11 +17,10 @@ impl ConferenceStorage {
         ConferenceStorage { connection }
     }
 
-    pub async fn save_conf(&self, mut model: conference::Model) -> Result<(), anyhow::Error> {
-        model.create_at = chrono::Utc::now().naive_utc();
-        model.update_at = chrono::Utc::now().naive_utc();
+    pub async fn save_conf(&self, mut model: conference::ActiveModel) -> Result<(), anyhow::Error> {
+        model.create_at = Set(chrono::Utc::now().naive_utc());
+        model.update_at = Set(chrono::Utc::now().naive_utc());
         model
-            .into_active_model()
             .insert(self.get_connection())
             .await
             .unwrap();

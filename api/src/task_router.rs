@@ -5,9 +5,8 @@ use axum::{
 };
 use chrono::{Datelike, Utc};
 use common::{errors::CommonError, model::CommonResult};
-use entity::{score, sea_orm_active_enums::TaskStatus, task};
+use entity::{monthly_score, sea_orm_active_enums::TaskStatus, task};
 use sea_orm::Set;
-use service::storage::score_stg::ScoreRes;
 
 use crate::{
     model::{
@@ -172,25 +171,17 @@ async fn intern_done(
         .unwrap();
     if let Some(score) = current_score {
         let sum_score = score.new_score + task.score;
-        let mut a_model: score::ActiveModel = score.clone().into();
+        let mut a_model: monthly_score::ActiveModel = score.clone().into();
         a_model.new_score = Set(sum_score);
         score_stg.update_score(a_model).await.unwrap();
     } else {
-        let last_score = score_stg
-            .get_latest_score_by_login(json.login.clone())
-            .await
-            .unwrap();
-        let mut new_score = NewScore {
+        let new_score = NewScore {
             score: task.score,
             github_id: json.github_id,
             github_login: task.student_github_login.clone().unwrap(),
             student_name: task.student_name.clone().unwrap(),
             carryover_score: 0,
         };
-        if let Some(last_score) = last_score {
-            let score: ScoreRes = last_score.into();
-            new_score.carryover_score = score.score_balance();
-        }
         score_stg.insert_score(new_score.into()).await.unwrap();
     };
     Ok(Json(CommonResult::success(Some(task))))

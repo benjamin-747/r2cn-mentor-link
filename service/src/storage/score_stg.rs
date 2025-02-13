@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use chrono::{Datelike, Utc};
-use entity::prelude::Score;
-use entity::score::{self};
+use entity::monthly_score::{self};
 use sea_orm::{
     ActiveModelTrait, ActiveValue::NotSet, ColumnTrait, DatabaseConnection, EntityTrait,
     QueryFilter, QueryOrder, Set,
 };
+
+use crate::model::score::ScoreDto;
 
 #[derive(Clone)]
 pub struct ScoreStorage {
@@ -27,11 +28,11 @@ impl ScoreStorage {
         year: i32,
         month: i32,
         login: String,
-    ) -> Result<Option<score::Model>, anyhow::Error> {
-        let record = score::Entity::find()
-            .filter(score::Column::GithubLogin.eq(login))
-            .filter(score::Column::Year.eq(year))
-            .filter(score::Column::Month.eq(month))
+    ) -> Result<Option<monthly_score::Model>, anyhow::Error> {
+        let record = monthly_score::Entity::find()
+            .filter(monthly_score::Column::GithubLogin.eq(login))
+            .filter(monthly_score::Column::Year.eq(year))
+            .filter(monthly_score::Column::Month.eq(month))
             .one(self.get_connection())
             .await?;
         Ok(record)
@@ -40,11 +41,11 @@ impl ScoreStorage {
     pub async fn get_latest_score_by_login(
         &self,
         login: String,
-    ) -> Result<Option<score::Model>, anyhow::Error> {
-        let record = score::Entity::find()
-            .filter(score::Column::GithubLogin.eq(login))
-            .order_by_desc(score::Column::Year)
-            .order_by_desc(score::Column::Month)
+    ) -> Result<Option<monthly_score::Model>, anyhow::Error> {
+        let record = monthly_score::Entity::find()
+            .filter(monthly_score::Column::GithubLogin.eq(login))
+            .order_by_desc(monthly_score::Column::Year)
+            .order_by_desc(monthly_score::Column::Month)
             .one(self.get_connection())
             .await?;
         Ok(record)
@@ -54,10 +55,10 @@ impl ScoreStorage {
         &self,
         year: i32,
         month: i32,
-    ) -> Result<Vec<score::Model>, anyhow::Error> {
-        let records = score::Entity::find()
-            .filter(score::Column::Year.eq(year))
-            .filter(score::Column::Month.eq(month))
+    ) -> Result<Vec<monthly_score::Model>, anyhow::Error> {
+        let records = monthly_score::Entity::find()
+            .filter(monthly_score::Column::Year.eq(year))
+            .filter(monthly_score::Column::Month.eq(month))
             .all(self.get_connection())
             .await?;
         Ok(records)
@@ -65,121 +66,53 @@ impl ScoreStorage {
 
     pub async fn insert_score(
         &self,
-        active_model: score::ActiveModel,
-    ) -> Result<score::Model, anyhow::Error> {
+        active_model: monthly_score::ActiveModel,
+    ) -> Result<monthly_score::Model, anyhow::Error> {
         let score = active_model.insert(self.get_connection()).await?;
         Ok(score)
     }
 
     pub async fn update_score(
         &self,
-        active_model: score::ActiveModel,
-    ) -> Result<score::Model, anyhow::Error> {
+        active_model: monthly_score::ActiveModel,
+    ) -> Result<monthly_score::Model, anyhow::Error> {
         let model = active_model.update(self.get_connection()).await?;
         Ok(model)
     }
 
-    pub async fn calculate_bonus(&self, models: Vec<score::Model>) {
-        for model in models {
-            let score: ScoreRes = model.clone().into();
-            let score_int = score.carryover_score + score.new_score;
-            let bonus = score.calculate_bonus(score_int);
-            if bonus.0 > 0 {
-                let mut a_model: score::ActiveModel = model.into();
-                a_model.consumption_score = Set(bonus.0);
-                a_model.exchanged = Set(Some(bonus.1));
-                a_model.update_at = Set(Utc::now().naive_utc());
-                a_model.update(self.get_connection()).await.unwrap();
-            }
-        }
-    }
-
-    pub async fn calculate_unactive_bonus(
+    pub async fn insert_or_update_carryover_score(
         &self,
-        models: Vec<score::Model>,
-        filted: Vec<String>,
+        last_month: ScoreDto,
     ) -> Result<(), anyhow::Error> {
-        let mut save_models = vec![];
-        for model in models {
-            if !filted.contains(&model.github_login) {
-                let score: ScoreRes = model.clone().into();
-                let score_int = score.score_balance();
-                let bonus = score.calculate_bonus(score_int);
-                if bonus.0 > 0 {
-                    let new_score = score::ActiveModel {
-                        id: NotSet,
-                        github_login: Set(score.github_login.clone()),
-                        student_name: Set(score.student_name.clone()),
-                        github_id: Set(score.github_id),
-                        year: Set(Utc::now().year()),
-                        month: Set(Utc::now().month() as i32),
-                        carryover_score: Set(score_int),
-                        new_score: Set(0),
-                        consumption_score: Set(bonus.0),
-                        exchanged: Set(Some(bonus.1)),
-                        create_at: Set(chrono::Utc::now().naive_utc()),
-                        update_at: Set(chrono::Utc::now().naive_utc()),
-                    };
-                    save_models.push(new_score);
-                }
-            }
-        }
-        if !save_models.is_empty() {
-            Score::insert_many(save_models)
-            .exec(self.get_connection())
-            .await?;
+        let now = Utc::now().naive_utc();
+        let year = now.year();
+        let month = now.month() as i32;
+        let github_login = last_month.github_login.clone();
+
+        let balance = last_month.score_balance();
+        let current_month = self.get_score(year, month, github_login).await.unwrap();
+        if let Some(current_month) = current_month {
+            let mut a_model: monthly_score::ActiveModel = current_month.into();
+            a_model.carryover_score = Set(balance);
+            a_model.update_at = Set(now);
+            self.update_score(a_model).await.unwrap();
+        } else {
+            let new_score = monthly_score::ActiveModel {
+                id: NotSet,
+                github_login: Set(last_month.github_login),
+                student_name: Set(last_month.student_name),
+                github_id: Set(last_month.github_id),
+                year: Set(now.year()),
+                month: Set(now.month() as i32),
+                carryover_score: Set(balance),
+                new_score: Set(0),
+                consumption_score: Set(0),
+                exchanged: Set(0),
+                create_at: Set(now),
+                update_at: Set(now),
+            };
+            self.insert_score(new_score).await.unwrap();
         }
         Ok(())
-    }
-}
-
-pub struct ScoreRes {
-    pub id: i32,
-    pub github_login: String,
-    pub student_name: String,
-    pub github_id: i64,
-    pub year: i32,
-    pub month: i32,
-    pub carryover_score: i32,
-    pub new_score: i32,
-    pub consumption_score: i32,
-    pub exchanged: Option<i32>,
-}
-
-impl From<score::Model> for ScoreRes {
-    fn from(value: score::Model) -> Self {
-        Self {
-            id: value.id,
-            github_login: value.github_login,
-            student_name: value.student_name,
-            github_id: value.github_id,
-            year: value.year,
-            month: value.month,
-            carryover_score: value.carryover_score,
-            new_score: value.new_score,
-            consumption_score: value.consumption_score,
-            exchanged: value.exchanged,
-        }
-    }
-}
-
-impl ScoreRes {
-    pub fn score_balance(&self) -> i32 {
-        self.carryover_score + self.new_score - self.consumption_score
-    }
-
-    pub fn calculate_bonus(&self, score: i32) -> (i32, i32) {
-        if score >= 100 {
-            return (100, 5000);
-        } else if score >= 80 {
-            return (80, 4000);
-        } else if score >= 60 {
-            return (60, 3000);
-        } else if score >= 40 {
-            return (40, 2000);
-        } else if score >= 20 {
-            return (20, 1000);
-        }
-        (0, 0)
     }
 }

@@ -3,11 +3,10 @@ use std::env;
 use anyhow::Error;
 use axum::{extract::State, http::StatusCode, routing::post, Router};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use chrono::{Datelike, Duration, Local, NaiveDateTime, NaiveTime, Utc, Weekday};
+use chrono::{Datelike, Duration, Local, NaiveTime, Utc, Weekday};
 use hmac::{Hmac, Mac};
 use rand::{distr::Alphanumeric, Rng};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
-use sea_orm::TryIntoModel;
 use serde_json::json;
 use sha2::Sha256;
 
@@ -17,7 +16,11 @@ use entity::conference;
 use crate::AppState;
 
 pub fn routers() -> Router<AppState> {
-    Router::new().route("/conference/new", post(conference_create))
+    Router::new().nest(
+        "/conference",
+        Router::new()
+            .route("/new", post(conference_create))
+    )
 }
 
 async fn conference_create(state: State<AppState>) -> Result<(), (StatusCode, &'static str)> {
@@ -25,8 +28,8 @@ async fn conference_create(state: State<AppState>) -> Result<(), (StatusCode, &'
     let api_host = env::var("HUAWEI_MEETING_API_ENDPOINT").unwrap();
     let app_auth = account_auth().await.unwrap();
 
-    let next_tuesday = next_tuesday_8pm().format("%Y-%m-%d %H:%M").to_string();
-    println!("Next Tuesday at 8 PM is: {}", next_tuesday);
+    let next_tuesday = next_tuesday_8pm();
+    tracing::debug!("Next Tuesday at 8 PM is: {}", next_tuesday);
     let json_str = json!({
         "startTime": next_tuesday.as_str(),
         "mediaTypes": "HDVideo",
@@ -47,16 +50,14 @@ async fn conference_create(state: State<AppState>) -> Result<(), (StatusCode, &'
     let body = res.text().await.unwrap();
     match serde_json::from_str::<Vec<Conferences>>(&body) {
         Ok(conf) => {
+            tracing::debug!("Create Meeting Return: {}", body);
             let a_model: conference::ActiveModel = conf.first().unwrap().to_owned().into();
             let conf_stg = state.context.conf_stg();
-            conf_stg
-                .save_conf(a_model.try_into_model().unwrap())
-                .await
-                .unwrap();
+            conf_stg.save_conf(a_model).await.unwrap();
         }
         Err(err) => {
             tracing::error!("parsing err:{}", err);
-            tracing::error!("huaweimeetng api return:{}", body);
+            tracing::error!("huaweimeeting api return:{}", body);
         }
     }
     Ok(())
@@ -174,7 +175,7 @@ fn generate_random_string() -> String {
     random_string
 }
 
-fn next_tuesday_8pm() -> NaiveDateTime {
+fn next_tuesday_8pm() -> String {
     let now: chrono::DateTime<Local> = Local::now();
 
     let target_time = NaiveTime::from_hms_opt(20, 0, 0).unwrap();
@@ -187,5 +188,10 @@ fn next_tuesday_8pm() -> NaiveDateTime {
         }
     };
     let next_tuesday_date = now + Duration::days(days_to_add as i64);
-    next_tuesday_date.date_naive().and_time(target_time)
+    next_tuesday_date
+        .date_naive()
+        .and_time(target_time)
+        .and_utc()
+        .format("%Y-%m-%d %H:%M")
+        .to_string()
 }
