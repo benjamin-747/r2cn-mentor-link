@@ -84,12 +84,12 @@ async fn export_excel(
 #[axum::debug_handler]
 async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>>, CommonError> {
     let now = Utc::now().naive_utc();
-    let last_month = get_last_month(now.into());
+    let calculate_month = get_last_month(now.into());
 
     // 获取上个月全部记录
     let monthly_records = state
         .score_stg()
-        .list_score_by_month(last_month.year(), last_month.month() as i32)
+        .list_score_by_month(calculate_month.year(), calculate_month.month() as i32)
         .await
         .unwrap();
 
@@ -102,7 +102,7 @@ async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>
             .unwrap();
         let consume_score = {
             let strategy = if let Some(student) = student {
-                load_score_strategy(student, last_month)
+                load_score_strategy(student, calculate_month)
             } else {
                 tracing::error!("Invalid Student Status:{}", model.github_login);
                 // fallback to default rule
@@ -122,13 +122,11 @@ async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>
             .unwrap();
         // 更新本月的上月结转分数
         let last_month: ScoreDto = a_model.try_into_model().unwrap().into();
-        if last_month.score_balance() != 0 {
-            state
-                .score_stg()
-                .insert_or_update_carryover_score(last_month)
-                .await
-                .unwrap();
-        }
+        state
+            .score_stg()
+            .insert_or_update_carryover_score(last_month)
+            .await
+            .unwrap();
     }
     Ok(Json(CommonResult::success(None)))
 }

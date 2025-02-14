@@ -97,21 +97,22 @@ impl ScoreStorage {
             a_model.update_at = Set(now);
             self.update_score(a_model).await.unwrap();
         } else {
-            let new_score = monthly_score::ActiveModel {
-                id: NotSet,
-                github_login: Set(last_month.github_login),
-                student_name: Set(last_month.student_name),
-                github_id: Set(last_month.github_id),
-                year: Set(now.year()),
-                month: Set(now.month() as i32),
-                carryover_score: Set(balance),
-                new_score: Set(0),
-                consumption_score: Set(0),
-                exchanged: Set(0),
-                create_at: Set(now),
-                update_at: Set(now),
-            };
-            self.insert_score(new_score).await.unwrap();
+            if balance != 0 {
+                let new_score = monthly_score::ActiveModel {
+                    id: NotSet,
+                    github_login: Set(last_month.github_login),
+                    student_name: Set(last_month.student_name),
+                    year: Set(now.year()),
+                    month: Set(now.month() as i32),
+                    carryover_score: Set(balance),
+                    new_score: Set(0),
+                    consumption_score: Set(0),
+                    exchanged: Set(0),
+                    create_at: Set(now),
+                    update_at: Set(now),
+                };
+                self.insert_score(new_score).await.unwrap();
+            }
         }
         Ok(())
     }

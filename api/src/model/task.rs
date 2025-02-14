@@ -76,7 +76,6 @@ pub struct SearchTask {
 pub struct CommandRequest {
     pub github_issue_id: i64,
     pub login: String,
-    pub github_id: i64,
     pub student_name: Option<String>,
 }
 
