@@ -177,10 +177,8 @@ async fn intern_done(
     } else {
         let new_score = NewScore {
             score: task.score,
-            github_id: json.github_id,
             github_login: task.student_github_login.clone().unwrap(),
             student_name: task.student_name.clone().unwrap(),
-            carryover_score: 0,
         };
         score_stg.insert_score(new_score.into()).await.unwrap();
     };

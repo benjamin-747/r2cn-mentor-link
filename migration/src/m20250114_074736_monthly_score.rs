@@ -14,7 +14,6 @@ impl MigrationTrait for Migration {
                     .col(pk_auto(MonthlyScore::Id))
                     .col(string(MonthlyScore::GithubLogin))
                     .col(string(MonthlyScore::StudentName))
-                    .col(big_integer(MonthlyScore::GithubId))
                     .col(integer(MonthlyScore::Year))
                     .col(integer(MonthlyScore::Month))
                     .col(integer(MonthlyScore::CarryoverScore))
@@ -53,7 +52,6 @@ enum MonthlyScore {
     Table,
     Id,
     GithubLogin,
-    GithubId,
     StudentName,
     Year,
     Month,
