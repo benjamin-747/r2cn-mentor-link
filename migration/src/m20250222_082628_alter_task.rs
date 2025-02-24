@@ -1,4 +1,4 @@
-use sea_orm_migration::{prelude::*, schema::*};
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -22,6 +22,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(""),
                     )
+                    .drop_column(Alias::new("student_name"))
                     .to_owned(),
             )
             .await?;
@@ -48,6 +49,7 @@ impl MigrationTrait for Migration {
                     .table(Task::Table)
                     .drop_column(Alias::new("github_issue_title"))
                     .drop_column(Alias::new("github_issue_link"))
+                    .add_column_if_not_exists(ColumnDef::new(Alias::new("student_name")).string())
                     .to_owned(),
             )
             .await?;

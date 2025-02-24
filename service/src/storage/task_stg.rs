@@ -89,7 +89,6 @@ impl TaskStorage {
         &self,
         github_issue_id: i64,
         login: String,
-        studnet_name: String,
     ) -> Result<task::Model, anyhow::Error> {
         let task = self
             .search_task_with_issue_id(github_issue_id)
@@ -100,7 +99,6 @@ impl TaskStorage {
             )))?;
         let mut task: task::ActiveModel = task.into();
         task.student_github_login = Set(Some(login));
-        task.student_name = Set(Some(studnet_name));
         task.task_status = Set(TaskStatus::RequestAssign);
         task.update_at = Set(Utc::now().naive_utc());
 

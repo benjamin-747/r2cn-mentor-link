@@ -36,16 +36,14 @@ impl EmailSender {
             )
             .unwrap();
 
-        // 使用 AWS SES SMTP 服务器
         let creds = Credentials::new(
-            env::var("AWS_SES_ACCOUNT").unwrap(),
-            env::var("AWS_SES_PASSWORD").unwrap(),
+            env::var("POSTMARK_AK").unwrap(),
+            env::var("POSTMARK_SK").unwrap(),
         );
 
-        let mailer = SmtpTransport::relay("email-smtp.ap-southeast-2.amazonaws.com") // AWS SES SMTP 地址
+        let mailer = SmtpTransport::starttls_relay("smtp.postmarkapp.com")
             .unwrap()
             .credentials(creds)
-            .port(465)
             .build();
 
         match mailer.send(&email) {
