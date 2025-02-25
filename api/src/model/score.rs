@@ -8,6 +8,7 @@ pub struct NewScore {
     pub score: i32,
     pub github_login: String,
     pub student_name: String,
+    pub carryover_score: i32
 }
 
 impl From<NewScore> for monthly_score::ActiveModel {
@@ -18,7 +19,7 @@ impl From<NewScore> for monthly_score::ActiveModel {
             student_name: Set(value.student_name),
             year: Set(Utc::now().year()),
             month: Set(Utc::now().month() as i32),
-            carryover_score: Set(0),
+            carryover_score: Set(value.carryover_score),
             new_score: Set(value.score),
             consumption_score: Set(0),
             exchanged: Set(0),

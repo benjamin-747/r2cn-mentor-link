@@ -6,9 +6,11 @@ use axum::{
 use chrono::{Datelike, Utc};
 use common::{errors::CommonError, model::CommonResult};
 use entity::{monthly_score, sea_orm_active_enums::TaskStatus, task};
-use sea_orm::Set;
+use sea_orm::{Set, TryIntoModel};
+use service::model::score::ScoreDto;
 
 use crate::{
+    email::EmailSender,
     model::{
         score::NewScore,
         task::{CommandRequest, NewTask, SearchTask, Task, UpdateScoreRequest},
@@ -102,7 +104,10 @@ async fn request_assign(
 ) -> Result<Json<CommonResult<bool>>, CommonError> {
     let res = state
         .task_stg()
-        .request_assign(json.github_issue_id, json.login, json.student_name.unwrap())
+        .request_assign(
+            json.github_issue_id,
+            json.student_login.unwrap(),
+        )
         .await;
 
     let res = match res {
@@ -165,23 +170,59 @@ async fn intern_done(
         .unwrap();
     let score_stg = state.score_stg();
     let date = Utc::now();
+    let student_login = task.student_github_login.clone().unwrap();
     let current_score = score_stg
-        .get_score(date.year(), date.month() as i32, json.login.clone())
+        .get_score(date.year(), date.month() as i32, &student_login)
         .await
         .unwrap();
-    if let Some(score) = current_score {
+    let balance = if let Some(score) = current_score {
         let sum_score = score.new_score + task.score;
         let mut a_model: monthly_score::ActiveModel = score.clone().into();
         a_model.new_score = Set(sum_score);
-        score_stg.update_score(a_model).await.unwrap();
+        score_stg.update_score(a_model.clone()).await.unwrap();
+        let score_dto: ScoreDto = a_model.try_into_model().unwrap().into();
+        score_dto.score_balance()
     } else {
-        let new_score = NewScore {
+        let student =  state.student_stg().get_student_by_login(&student_login).await.unwrap();
+        let mut new_score = NewScore {
             score: task.score,
-            github_login: task.student_github_login.clone().unwrap(),
-            student_name: task.student_name.clone().unwrap(),
+            github_login: student_login.clone(),
+            student_name: String::new(),
+            carryover_score: 0,
         };
-        score_stg.insert_score(new_score.into()).await.unwrap();
+        if let Some(student) = student {
+            new_score.student_name = student.student_name;
+        };
+        let last_score = score_stg
+            .get_latest_score_by_login(&student_login)
+            .await
+            .unwrap();
+        if let Some(last_score) = last_score {
+            let last_score: ScoreDto = last_score.into();
+            new_score.carryover_score = last_score.score_balance();
+        }
+        score_stg.insert_score(new_score.clone().into()).await.unwrap();
+        new_score.carryover_score + new_score.score
     };
+    let stu_stg = state.student_stg();
+    let student = stu_stg
+        .get_student_by_login(&task.mentor_github_login)
+        .await
+        .unwrap();
+    if let Some(student) = student {
+        let mut email_context = tera::Context::new();
+        email_context.insert("new_score", &task.score);
+        email_context.insert("total_score", &balance);
+        email_context.insert("task_link", "");
+        email_context.insert("task_title", &task.github_issue_title);
+        let sender = EmailSender::new(
+            "score_count_email.html",
+            "R2CN任务完成",
+            email_context,
+            &student.email,
+        );
+        sender.send();
+    }
     Ok(Json(CommonResult::success(Some(task))))
 }
 

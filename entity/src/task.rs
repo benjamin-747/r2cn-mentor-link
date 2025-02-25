@@ -20,10 +20,11 @@ pub struct Model {
     pub finish_year: Option<i32>,
     pub finish_month: Option<i32>,
     pub student_github_login: Option<String>,
-    pub student_name: Option<String>,
     pub mentor_github_login: String,
     pub create_at: DateTime,
     pub update_at: DateTime,
+    pub github_issue_title: String,
+    pub github_issue_link: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

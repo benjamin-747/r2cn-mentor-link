@@ -11,6 +11,8 @@ pub struct NewTask {
     pub github_issue_id: i64,
     pub score: i32,
     pub mentor_github_login: String,
+    pub github_issue_title: String,
+    pub github_issue_link: String,
 }
 
 impl From<NewTask> for task::ActiveModel {
@@ -28,9 +30,10 @@ impl From<NewTask> for task::ActiveModel {
             finish_month: NotSet,
             mentor_github_login: Set(value.mentor_github_login),
             student_github_login: NotSet,
-            student_name: NotSet,
             create_at: Set(chrono::Utc::now().naive_utc()),
             update_at: Set(chrono::Utc::now().naive_utc()),
+            github_issue_title: Set(value.github_issue_title),
+            github_issue_link: Set(value.github_issue_link),
         }
     }
 }
@@ -75,8 +78,7 @@ pub struct SearchTask {
 #[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CommandRequest {
     pub github_issue_id: i64,
-    pub login: String,
-    pub student_name: Option<String>,
+    pub student_login: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
