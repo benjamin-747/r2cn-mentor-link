@@ -59,11 +59,11 @@ impl StudentStorage {
             let new_stu = student::ActiveModel {
                 id: NotSet,
                 github_login: Set(login.to_owned()),
-                student_name: Set(data.student_name.unwrap()),
+                student_name: Set(data.student_name.unwrap_or_default()),
                 contract_end_date: Set(contract_deadline),
                 create_at: Set(now),
                 update_at: Set(now),
-                email: Set(data.email.unwrap()),
+                email: Set(data.email.unwrap_or_default()),
             };
             new_stu.insert(self.get_connection()).await?;
         }
