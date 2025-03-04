@@ -24,11 +24,13 @@ async fn validate_student(
     let res = service::ospp::validate_student(json.clone()).await;
     let res = match res {
         Ok(data) => {
-            state
-                .student_stg()
-                .insert_or_update_student(&json.login, data.clone())
-                .await
-                .unwrap();
+            if data.success {
+                state
+                    .student_stg()
+                    .insert_or_update_student(&json.login, data.clone())
+                    .await
+                    .unwrap();
+            }
             CommonResult::success(Some(data))
         }
         Err(err) => CommonResult::failed(&err.to_string()),
