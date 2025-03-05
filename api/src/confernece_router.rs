@@ -1,16 +1,16 @@
 use std::env;
 
 use anyhow::Error;
-use axum::{extract::State, http::StatusCode, routing::post, Router};
-use base64::{engine::general_purpose::STANDARD, Engine as _};
+use axum::{Router, extract::State, http::StatusCode, routing::post};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{Datelike, Duration, Local, NaiveTime, Utc, Weekday};
 use hmac::{Hmac, Mac};
-use rand::{distr::Alphanumeric, Rng};
+use rand::{Rng, distr::Alphanumeric};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde_json::json;
 use sha2::Sha256;
 
-use crate::model::huawei_meeting::{app_auth::AppAuth, Conferences};
+use crate::model::huawei_meeting::{Conferences, app_auth::AppAuth};
 use entity::conference;
 
 use crate::AppState;
@@ -18,8 +18,7 @@ use crate::AppState;
 pub fn routers() -> Router<AppState> {
     Router::new().nest(
         "/conference",
-        Router::new()
-            .route("/new", post(conference_create))
+        Router::new().route("/new", post(conference_create)),
     )
 }
 

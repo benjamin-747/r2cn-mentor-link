@@ -1,6 +1,6 @@
 use std::env;
 
-use lettre::message::{header, SinglePart};
+use lettre::message::{SinglePart, header};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use tera::{Context, Tera};

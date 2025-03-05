@@ -8,7 +8,7 @@ pub struct NewScore {
     pub score: i32,
     pub github_login: String,
     pub student_name: String,
-    pub carryover_score: i32
+    pub carryover_score: i32,
 }
 
 impl From<NewScore> for monthly_score::ActiveModel {

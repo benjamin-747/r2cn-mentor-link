@@ -21,17 +21,17 @@ impl MigrationTrait for Migration {
             )
             .await?;
         manager
-        .create_index(
-            Index::create()
-                .if_not_exists()
-                .name("idx-student_login")
-                .unique()
-                .table(Student::Table)
-                .col(Student::GithubLogin)
-                .to_owned(),
-        )
-        .await?;
-        Ok(())  
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("idx-student_login")
+                    .unique()
+                    .table(Student::Table)
+                    .col(Student::GithubLogin)
+                    .to_owned(),
+            )
+            .await?;
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {

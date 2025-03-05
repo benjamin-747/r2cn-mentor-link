@@ -1,7 +1,7 @@
 use axum::{
+    Json, Router,
     extract::{Path, State},
     routing::{get, post},
-    Json, Router,
 };
 use chrono::{Datelike, Utc};
 use common::{errors::CommonError, model::CommonResult};
@@ -10,12 +10,12 @@ use sea_orm::{Set, TryIntoModel};
 use service::model::score::ScoreDto;
 
 use crate::{
+    AppState,
     email::EmailSender,
     model::{
         score::NewScore,
         task::{CommandRequest, NewTask, SearchTask, Task, UpdateScoreRequest},
     },
-    AppState,
 };
 
 pub fn routers() -> Router<AppState> {
@@ -104,10 +104,7 @@ async fn request_assign(
 ) -> Result<Json<CommonResult<bool>>, CommonError> {
     let res = state
         .task_stg()
-        .request_assign(
-            json.github_issue_id,
-            json.student_login.unwrap(),
-        )
+        .request_assign(json.github_issue_id, json.student_login.unwrap())
         .await;
 
     let res = match res {
@@ -183,7 +180,11 @@ async fn intern_done(
         let score_dto: ScoreDto = a_model.try_into_model().unwrap().into();
         score_dto.score_balance()
     } else {
-        let student =  state.student_stg().get_student_by_login(&student_login).await.unwrap();
+        let student = state
+            .student_stg()
+            .get_student_by_login(&student_login)
+            .await
+            .unwrap();
         let mut new_score = NewScore {
             score: task.score,
             github_login: student_login.clone(),
@@ -201,7 +202,10 @@ async fn intern_done(
             let last_score: ScoreDto = last_score.into();
             new_score.carryover_score = last_score.score_balance();
         }
-        score_stg.insert_score(new_score.clone().into()).await.unwrap();
+        score_stg
+            .insert_score(new_score.clone().into())
+            .await
+            .unwrap();
         new_score.carryover_score + new_score.score
     };
     let stu_stg = state.student_stg();

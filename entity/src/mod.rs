@@ -3,8 +3,8 @@
 pub mod prelude;
 
 pub mod conference;
+pub mod extend;
 pub mod monthly_score;
 pub mod sea_orm_active_enums;
 pub mod student;
 pub mod task;
-pub mod extend;

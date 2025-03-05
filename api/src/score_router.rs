@@ -1,22 +1,22 @@
 use std::io::Cursor;
 
 use axum::{
+    Json, Router,
     body::Body,
     extract::{Query, State},
     response::Response,
     routing::{get, post},
-    Json, Router,
 };
 use chrono::{Datelike, Utc};
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use rust_xlsxwriter::Workbook;
 use sea_orm::{Set, TryIntoModel};
 
 use common::{date::get_last_month, errors::CommonError, model::CommonResult};
 use entity::monthly_score;
-use service::model::score::{load_score_strategy, CommonScore, ScoreDto};
+use service::model::score::{CommonScore, ScoreDto, load_score_strategy};
 
-use crate::{model::score::ExportExcel, AppState};
+use crate::{AppState, model::score::ExportExcel};
 
 pub fn routers() -> Router<AppState> {
     Router::new().nest(
@@ -42,18 +42,23 @@ async fn export_excel(
 
     worksheet.set_column_width(0, 22).unwrap();
     worksheet.set_column_width(1, 22).unwrap();
+    worksheet.set_column_width(2, 22).unwrap();
 
     let mut row_idx = 1;
 
     worksheet.write_string(0, 0, "姓名").unwrap();
-    worksheet.write_string(0, 1, "金额(元)").unwrap();
+    worksheet.write_string(0, 1, "GitHub ID").unwrap();
+    worksheet.write_string(0, 2, "金额(元)").unwrap();
 
     for score in monthly_records {
         if score.exchanged != 0 {
             worksheet
                 .write_string(row_idx as u32, 0, score.student_name)
                 .unwrap();
-            worksheet.write(row_idx as u32, 1, score.exchanged).unwrap();
+            worksheet
+                .write_string(row_idx as u32, 1, score.github_login)
+                .unwrap();
+            worksheet.write(row_idx as u32, 2, score.exchanged).unwrap();
             row_idx += 1;
         }
     }
