@@ -19,6 +19,10 @@ use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
+    unsafe {
+        env::set_var("RUST_LOG", "debug");
+    }
+
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
