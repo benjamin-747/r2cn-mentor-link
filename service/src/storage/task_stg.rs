@@ -3,7 +3,8 @@ use std::sync::Arc;
 use chrono::{Datelike, Utc};
 use entity::{sea_orm_active_enums::TaskStatus, task};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder,
+    Set,
 };
 
 #[derive(Clone)]
@@ -53,6 +54,21 @@ impl TaskStorage {
         let task = task::Entity::find()
             .filter(task::Column::GithubIssueId.eq(github_issue_id))
             .one(self.get_connection())
+            .await?;
+        Ok(task)
+    }
+
+    pub async fn search_finished_task_with_date(
+        &self,
+        finish_year: i32,
+        finish_month: i32,
+    ) -> Result<Vec<task::Model>, anyhow::Error> {
+        let task = task::Entity::find()
+            .filter(task::Column::FinishYear.eq(finish_year))
+            .filter(task::Column::FinishMonth.eq(finish_month))
+            .filter(task::Column::TaskStatus.eq(TaskStatus::Finished))
+            .order_by_asc(task::Column::StudentGithubLogin)
+            .all(self.get_connection())
             .await?;
         Ok(task)
     }

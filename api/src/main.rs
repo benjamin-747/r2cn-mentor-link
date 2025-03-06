@@ -1,9 +1,9 @@
 mod confernece_router;
+mod email;
 mod model;
 mod score_router;
 mod student_router;
 mod task_router;
-mod email;
 
 use std::env;
 
@@ -11,15 +11,14 @@ use axum::Router;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
 use service::{
-    storage::{score_stg::ScoreStorage, student_stg::StudentStorage, task_stg::TaskStorage},
     Context,
+    storage::{score_stg::ScoreStorage, student_stg::StudentStorage, task_stg::TaskStorage},
 };
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn start() -> anyhow::Result<()> {
-    env::set_var("RUST_LOG", "debug");
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();

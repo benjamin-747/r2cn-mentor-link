@@ -4,6 +4,3 @@ use serde::{Deserialize, Serialize};
 pub struct SearchStuTask {
     pub login: String,
 }
-
-
-

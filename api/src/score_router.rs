@@ -1,22 +1,22 @@
 use std::io::Cursor;
 
 use axum::{
+    Json, Router,
     body::Body,
     extract::{Query, State},
     response::Response,
     routing::{get, post},
-    Json, Router,
 };
 use chrono::{Datelike, Utc};
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use rust_xlsxwriter::Workbook;
 use sea_orm::{Set, TryIntoModel};
 
 use common::{date::get_last_month, errors::CommonError, model::CommonResult};
 use entity::monthly_score;
-use service::model::score::{load_score_strategy, CommonScore, ScoreDto};
+use service::model::score::{CommonScore, ScoreDto, load_score_strategy};
 
-use crate::{model::score::ExportExcel, AppState};
+use crate::{AppState, model::score::ExportExcel};
 
 pub fn routers() -> Router<AppState> {
     Router::new().nest(
@@ -38,27 +38,85 @@ async fn export_excel(
         .unwrap();
 
     let mut workbook = Workbook::new();
-    let worksheet = workbook.add_worksheet();
 
-    worksheet.set_column_width(0, 22).unwrap();
-    worksheet.set_column_width(1, 22).unwrap();
+    let sheet1 = workbook.add_worksheet().set_name("当月积分总计").unwrap();
+
+    for col in 0..6 {
+        sheet1.set_column_width(col, 18).unwrap();
+    }
 
     let mut row_idx = 1;
 
-    worksheet.write_string(0, 0, "姓名").unwrap();
-    worksheet.write_string(0, 1, "金额(元)").unwrap();
+    sheet1.write_string(0, 0, "姓名").unwrap();
+    sheet1.write_string(0, 1, "GitHub ID").unwrap();
+    sheet1.write_string(0, 2, "上个月结转分数").unwrap();
+    sheet1.write_string(0, 3, "本月新增分数").unwrap();
+    sheet1.write_string(0, 4, "本月转换分数").unwrap();
+    sheet1.write_string(0, 5, "金额(元)").unwrap();
 
     for score in monthly_records {
         if score.exchanged != 0 {
-            worksheet
+            sheet1
                 .write_string(row_idx as u32, 0, score.student_name)
                 .unwrap();
-            worksheet.write(row_idx as u32, 1, score.exchanged).unwrap();
+            sheet1
+                .write_string(row_idx as u32, 1, score.github_login)
+                .unwrap();
+            sheet1
+                .write_number(row_idx as u32, 2, score.carryover_score)
+                .unwrap();
+            sheet1.write_number(row_idx as u32, 3, score.new_score).unwrap();
+            sheet1
+                .write_number(row_idx as u32, 4, score.consumption_score)
+                .unwrap();
+            sheet1.write_number(row_idx as u32, 5, score.exchanged).unwrap();
             row_idx += 1;
         }
     }
+
+    let sheet2 = workbook.add_worksheet().set_name("当月任务详情").unwrap();
+
+    for col in 0..5 {
+        sheet2.set_column_width(col, 18).unwrap();
+    }
+
+    sheet2.write_string(0, 0, "学生GitHub ID").unwrap();
+    sheet2.write_string(0, 1, "导师GitHub ID").unwrap();
+    sheet2.write_string(0, 2, "任务标题").unwrap();
+    sheet2.write_string(0, 3, "任务链接").unwrap();
+    sheet2.write_string(0, 4, "任务分数").unwrap();
+
+    let mut row_idx = 1;
+
+    let finished_tasks = state
+        .task_stg()
+        .search_finished_task_with_date(params.year, params.month)
+        .await
+        .unwrap();
+
+    for task in finished_tasks {
+        sheet2
+            .write_string(
+                row_idx as u32,
+                0,
+                task.student_github_login.unwrap_or_default(),
+            )
+            .unwrap();
+        sheet2
+            .write_string(row_idx as u32, 1, task.mentor_github_login)
+            .unwrap();
+        sheet2
+            .write(row_idx as u32, 2, task.github_issue_title)
+            .unwrap();
+        sheet2
+            .write(row_idx as u32, 3, task.github_issue_link)
+            .unwrap();
+        sheet2.write_number(row_idx as u32, 4, task.score).unwrap();
+        row_idx += 1;
+    }
+
     let file_name = format!(
-        "开源实习 临时用工人员劳务费上报表-{}年{}月.xlsx",
+        "开源实习-人员劳务费统计表-{}年{}月.xlsx",
         params.year, params.month
     );
 

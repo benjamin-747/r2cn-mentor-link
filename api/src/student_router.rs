@@ -1,11 +1,11 @@
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, routing::post};
 use common::{errors::CommonError, model::CommonResult};
 use entity::sea_orm_active_enums::TaskStatus;
 use service::ospp::{ValidateStudent, ValidateStudentRes};
 
 use crate::{
-    model::{student::SearchStuTask, task::Task},
     AppState,
+    model::{student::SearchStuTask, task::Task},
 };
 
 pub fn routers() -> Router<AppState> {

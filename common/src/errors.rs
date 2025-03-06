@@ -1,12 +1,11 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use thiserror::Error;
 
 use crate::model::CommonResult;
-
 
 #[derive(Debug, Error)]
 pub enum CommonError {

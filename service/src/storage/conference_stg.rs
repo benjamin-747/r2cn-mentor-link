@@ -20,10 +20,7 @@ impl ConferenceStorage {
     pub async fn save_conf(&self, mut model: conference::ActiveModel) -> Result<(), anyhow::Error> {
         model.create_at = Set(chrono::Utc::now().naive_utc());
         model.update_at = Set(chrono::Utc::now().naive_utc());
-        model
-            .insert(self.get_connection())
-            .await
-            .unwrap();
+        model.insert(self.get_connection()).await.unwrap();
         Ok(())
     }
 }
