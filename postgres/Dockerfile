@@ -9,9 +9,9 @@ FROM postgres:17
 # in the Dockerfile. This is a security best practice to prevent accidental exposure of sensitive information.
 #
 # However, since this `Dockerfile` is intended for use in a development environment, you can choose to ignore this warning, or raise a pull request to help us improving it.
-ENV POSTGRES_DB=mentorlink
-ENV POSTGRES_USER=r2cn
-ENV POSTGRES_PASSWORD=r2cn
+ENV POSTGRES_DB=${POSTGRES_DB}
+ENV POSTGRES_USER=${POSTGRES_USER}
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
 EXPOSE 5432
 
