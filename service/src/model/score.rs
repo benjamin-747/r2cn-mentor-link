@@ -6,6 +6,7 @@ pub trait ScoreStrategy {
     fn consumed_score(&self, score: i32) -> i32;
 }
 
+/// 通用计算逻辑，大于40分按阶段发放
 pub struct CommonScore;
 impl ScoreStrategy for CommonScore {
     fn consumed_score(&self, score: i32) -> i32 {
@@ -17,13 +18,15 @@ impl ScoreStrategy for CommonScore {
             return 60;
         } else if score >= 40 {
             return 40;
-        } else if score >= 20 {
-            return 20;
         }
+        // else if score >= 20 {
+        //     return 20;
+        // }
         0
     }
 }
 
+/// 截止日期规则，达到截止日期后按每月最多100分发放，不足100按实际发放
 pub struct DeadlineScore;
 impl ScoreStrategy for DeadlineScore {
     fn consumed_score(&self, score: i32) -> i32 {

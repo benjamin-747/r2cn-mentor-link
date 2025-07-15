@@ -11,7 +11,6 @@ use service::model::score::ScoreDto;
 
 use crate::{
     AppState,
-    email::EmailSender,
     model::{
         score::NewScore,
         task::{CommandRequest, NewTask, SearchTask, Task, UpdateScoreRequest},
@@ -213,19 +212,26 @@ async fn intern_done(
         .get_student_by_login(&task.mentor_github_login)
         .await
         .unwrap();
+
     if let Some(student) = student {
-        let mut email_context = tera::Context::new();
-        email_context.insert("new_score", &task.score);
-        email_context.insert("total_score", &balance);
-        email_context.insert("task_link", "");
-        email_context.insert("task_title", &task.github_issue_title);
-        let sender = EmailSender::new(
-            "score_count_email.html",
-            "R2CN任务完成",
-            email_context,
-            &student.email,
-        );
-        sender.send();
+        tracing::info!(
+            "{} new_score: {}, total_score:{}",
+            student.email,
+            task.score,
+            balance
+        )
+        //     let mut email_context = tera::Context::new();
+        //     email_context.insert("new_score", &task.score);
+        //     email_context.insert("total_score", &balance);
+        //     email_context.insert("task_link", "");
+        //     email_context.insert("task_title", &task.github_issue_title);
+        //     let sender = EmailSender::new(
+        //         "score_count_email.html",
+        //         "R2CN任务完成",
+        //         email_context,
+        //         &student.email,
+        //     );
+        //     sender.send();
     }
     Ok(Json(CommonResult::success(Some(task))))
 }
