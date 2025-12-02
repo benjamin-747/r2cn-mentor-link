@@ -65,11 +65,15 @@ async fn export_excel(
             sheet1
                 .write_number(row_idx as u32, 2, score.carryover_score)
                 .unwrap();
-            sheet1.write_number(row_idx as u32, 3, score.new_score).unwrap();
+            sheet1
+                .write_number(row_idx as u32, 3, score.new_score)
+                .unwrap();
             sheet1
                 .write_number(row_idx as u32, 4, score.consumption_score)
                 .unwrap();
-            sheet1.write_number(row_idx as u32, 5, score.exchanged).unwrap();
+            sheet1
+                .write_number(row_idx as u32, 5, score.exchanged)
+                .unwrap();
             row_idx += 1;
         }
     }

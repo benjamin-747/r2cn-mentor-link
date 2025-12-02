@@ -49,7 +49,7 @@ async fn update_task_score(
 ) -> Result<Json<CommonResult<bool>>, CommonError> {
     let res = state
         .task_stg()
-        .update_score(json.github_issue_id, json.score)
+        .update_score(json.github_issue_id, json.github_issue_title, json.score)
         .await;
     let res = match res {
         Ok(_) => CommonResult::success(Some(true)),

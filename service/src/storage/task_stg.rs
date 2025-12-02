@@ -32,6 +32,7 @@ impl TaskStorage {
     pub async fn update_score(
         &self,
         github_issue_id: i64,
+        github_issue_title: String,
         score: i32,
     ) -> Result<task::Model, anyhow::Error> {
         let task = self
@@ -43,6 +44,7 @@ impl TaskStorage {
             )))?;
         let mut task: task::ActiveModel = task.into();
         task.score = Set(score);
+        task.github_issue_title = Set(github_issue_title);
         task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
