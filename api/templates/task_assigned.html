@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>新任务已认领 / New Task Assigned</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background: #f6f8fb;
+            color: #111;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 24px auto;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(13, 23, 34, 0.08);
+        }
+
+        .header {
+            padding: 20px;
+            background: linear-gradient(90deg, #2b6ef6, #7b61ff);
+            color: #fff;
+            text-align: center;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0 0 8px;
+        }
+
+        p {
+            margin: 8px 0 14px;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .primary {
+            background: #2b6ef6;
+            color: #fff;
+        }
+
+        .muted {
+            color: #777;
+            font-size: 13px;
+        }
+
+        .footer {
+            padding: 16px;
+            text-align: center;
+            font-size: 13px;
+            color: #9aa3b2;
+            background: #fbfdff;
+        }
+
+        .two-col {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .meta {
+            background: #f3f6ff;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        @media(max-width:420px) {
+            .two-col {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 18px;
+            }
+
+            .container {
+                margin: 12px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" role="article" aria-label="R2CN 新任务通知 / New Task Notice">
+        <div class="header">
+            <div class="logo">R2CN</div>
+            <div style="font-size:13px;margin-top:6px;">任务已认领 · Task Assigned</div>
+        </div>
+
+        <div class="content">
+            <!-- 中文 -->
+            <h1>你已认领新的任务</h1>
+            <p>亲爱的 <strong>{{student_name}}</strong>，</p>
+            <p>你已认领任务：<strong>{{task_title}}</strong>（任务编号：{{task_id}}）。请尽快与导师 <strong>{{mentor_name}}</strong>
+                沟通并确认设计方案与时间节点。</p>
+
+            <div class="two-col" style="margin-top:8px;">
+                <div class="meta">导师：{{mentor_name}}（{{mentor_email}}）</div>
+            </div>
+
+            <p style="margin-top:14px;">
+                <a class="btn primary" href="{{task_link}}">查看任务</a>
+                <a class="btn" style="margin-left:8px;background:#eef2ff;color:#2b6ef6;"
+                    href="mailto:{{mentor_email}}">联系导师</a>
+            </p>
+
+            <hr style="border:none;border-top:1px solid #eef2f6;margin:18px 0;" />
+
+            <!-- English -->
+            <h1 style="font-size:16px;">New Task Assigned</h1>
+            <p>Hi <strong>{{student_name}}</strong>,</p>
+            <p>You have claimed the task: <strong>{{task_title}}</strong> (ID: {{task_id}}). Please contact your mentor
+                <strong>{{mentor_name}}</strong> as soon as possible to confirm the design plan and timeline.
+            </p>
+
+            <div class="two-col" style="margin-top:8px;">
+                <div class="meta">Mentor{{mentor_name}}（{{mentor_email}}）</div>
+            </div>
+
+            <p style="margin-top:6px;">
+                <a class="btn primary" href="{{task_link}}">View Task</a>
+                <a class="btn" style="margin-left:8px;background:#eef2ff;color:#2b6ef6;"
+                    href="mailto:{{mentor_email}}">Email Mentor</a>
+            </p>
+        </div>
+
+        <div class="footer">
+            R2CN · 如需帮助请联系 support@r2cn.example
+            <br />For assistance, contact support@r2cn.example
+        </div>
+    </div>
+</body>
+
+</html>

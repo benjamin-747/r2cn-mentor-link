@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>任务完成 / Task Completed</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f6fb;
+            color: #111;
+        }
+
+        .wrap {
+            max-width: 600px;
+            margin: 28px auto;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 6px 28px rgba(11, 24, 48, 0.06);
+        }
+
+        .top {
+            padding: 20px;
+            text-align: center;
+            background: #0f1724;
+            color: #fff;
+        }
+
+        .top h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .body {
+            padding: 20px;
+        }
+
+        .points {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 12px 0;
+        }
+
+        .card {
+            flex: 1;
+            min-width: 150px;
+            background: #f7fbff;
+            padding: 14px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .big {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2b6ef6;
+        }
+
+        .muted {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            background: #2b6ef6;
+            color: #fff;
+        }
+
+        .footer {
+            padding: 14px;
+            text-align: center;
+            font-size: 13px;
+            color: #9aa3b2;
+            background: #fbfdff;
+        }
+
+        @media(max-width:420px) {
+            .points {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap" role="article">
+        <div class="top">
+            <h2>任务已完成 · Task Completed</h2>
+            <div style="font-size:13px;margin-top:6px;">任务完成统计 / Completion Summary</div>
+        </div>
+
+        <div class="body">
+            <!-- 中文 -->
+            <p>亲爱的 <strong>{{student_name}}</strong>，恭喜你完成任务：<strong>{{task_title}}</strong>（{{task_id}}）。</p>
+
+            <div class="points" aria-hidden="false">
+                <div class="card">
+                    <div class="muted">本次获得积分</div>
+                    <div class="big">{{points_earned}}</div>
+                </div>
+                <div class="card">
+                    <div class="muted">当前总积分</div>
+                    <div class="big">{{points_total}}</div>
+                </div>
+            </div>
+
+            <p>你可以在积分页面查看明细并兑换奖励。</p>
+            <a class="btn primary" href="{{task_link}}">查看任务</a>
+
+
+            <hr style="border:none;border-top:1px solid #eef2f6;margin:18px 0;" />
+
+            <!-- English -->
+            <p style="font-size:14px;"><strong>{{student_name}}</strong>, congrats on completing the task
+                <strong>{{task_title}}</strong> (ID: {{task_id}}).
+            </p>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+                <div
+                    style="flex:1;min-width:150px;background:#f7fbff;padding:12px;border-radius:8px;text-align:center;">
+                    <div style="font-size:12px;color:#6b7280;">Points Earned</div>
+                    <div style="font-size:26px;font-weight:700;color:#2b6ef6;">{{points_earned}}</div>
+                </div>
+                <div
+                    style="flex:1;min-width:150px;background:#f7fbff;padding:12px;border-radius:8px;text-align:center;">
+                    <div style="font-size:12px;color:#6b7280;">Total Points</div>
+                    <div style="font-size:26px;font-weight:700;color:#2b6ef6;">{{points_total}}</div>
+                </div>
+            </div>
+
+            <p style="margin-top:12px;">View your point history and redeem rewards anytime.</p>
+            <a class="btn primary" href="{{task_link}}">View Task</a>
+
+        </div>
+
+        <div class="footer">
+            R2CN · 如需帮助请联系 support@r2cn.example
+            <br />For assistance, contact support@r2cn.example
+        </div>
+    </div>
+</body>
+
+</html>
