@@ -79,6 +79,7 @@ mod test {
             "task_link",
             "https://github.com/benjamin-747/r2cn-bot-test/issues/22",
         );
+        email_context.insert("project_link", "https://github.com/benjamin-747/r2cn-bot-test");
         email_context.insert("task_id", "123");
         email_context.insert("mentor_name", "name");
         email_context.insert("mentor_email", "email");
