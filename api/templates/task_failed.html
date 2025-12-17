@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>任务失败通知 / Task Failed</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #fbfbfd;
+            color: #111;
+        }
+
+        .wrap {
+            max-width: 640px;
+            margin: 28px auto;
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 6px 30px rgba(10, 20, 40, 0.06);
+        }
+
+        .warn {
+            background: #fff5f6;
+            border-left: 6px solid #ff4d6d;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        h2 {
+            margin: 6px 0 10px;
+            font-size: 18px;
+        }
+
+        p {
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .muted {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .actions {
+            margin-top: 12px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .primary {
+            background: #2b6ef6;
+            color: #fff;
+        }
+
+        .secondary {
+            background: #eef2ff;
+            color: #2b6ef6;
+            margin-left: 8px;
+        }
+
+        .footer {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #9aa3b2;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap" role="article">
+        <div class="warn">
+            <h2>任务未通过 / Task Not Successful</h2>
+            <p>亲爱的 <strong>{{student_name}}</strong>，很遗憾：任务 <strong>{{task_title}}</strong>（{{task_id}}）未能通过审核。</p>
+            <p class="muted">失败原因：{{failure_reason}}</p>
+        </div>
+
+        <div style="margin-top:12px;">
+            <!-- 中文建议 -->
+            <p>建议你：</p>
+            <ul>
+                <li>查看评审意见</li>
+                <li>与导师沟通并修改设计后重新提交。</li>
+                <li>如需帮助，请联系导师或运维团队。</li>
+            </ul>
+
+            <div class="actions">
+                <a class="btn primary" href="{{task_link}}">查看任务</a>
+                <a class="btn secondary" href="mailto:{{mentor_email}}">联系导师 / Email Mentor</a>
+            </div>
+
+            <hr style="border:none;border-top:1px solid #eef2f6;margin:18px 0;" />
+
+            <!-- English -->
+            <h2 style="font-size:16px;">Task Not Successful</h2>
+            <p>Hi <strong>{{student_name}}</strong>, unfortunately the task <strong>{{task_title}}</strong> (ID:
+                {{task_id}}) did not pass review.</p>
+            <p class="muted">Reason: {{failure_reason}}</p>
+            <p>Recommendation: review the feedback ({{review_comments}}), discuss with your mentor, update the work and
+                resubmit.</p>
+            <p style="margin-top:8px;">
+                <a class="btn primary" href="{{task_link}}">View Task</a>
+                <a class="btn secondary" href="mailto:{{mentor_email}}">Email Mentor</a>
+            </p>
+        </div>
+
+
+        <div class="footer">
+            R2CN · 如需帮助请联系 support@r2cn.example
+            <br />For assistance, contact support@r2cn.example
+        </div>
+    </div>
+</body>
+
+</html>

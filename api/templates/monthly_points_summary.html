@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>R2CN 月度积分报告 / Monthly Points Summary</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f7f9fc;
+            color: #111;
+        }
+
+        .card {
+            max-width: 700px;
+            margin: 24px auto;
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 6px 24px rgba(9, 18, 32, 0.06);
+        }
+
+        h2 {
+            margin: 0 0 6px;
+            font-size: 20px;
+        }
+
+        .muted {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .summary {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .block {
+            background: #f3f6ff;
+            padding: 12px;
+            border-radius: 8px;
+            min-width: 160px;
+            text-align: center;
+            flex: 1;
+        }
+
+        .num {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2b6ef6;
+            margin-top: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 18px;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #eef2f6;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #fbfdff;
+            font-weight: 700;
+            color: #374151;
+        }
+
+        .footer {
+            margin-top: 18px;
+            text-align: center;
+            color: #9aa3b2;
+            font-size: 13px;
+        }
+
+        @media (max-width:520px) {
+            .summary {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card" role="article">
+
+        <!-- Header -->
+        <h2>📊 {{report_month}} 月度积分报告</h2>
+        <div class="muted">Dear {{student_name}}, this is your monthly points summary.</div>
+
+        <!-- Chinese Section -->
+        <h3 style="margin-top:20px;">📘 中文报告</h3>
+        <p>以下是你在 <strong>{{report_month}}</strong> 的积分情况：</p>
+
+        <div class="summary">
+            <div class="block">
+                <div class="muted">本月获得积分</div>
+                <div class="num">{{points_earned_month}}</div>
+            </div>
+            <div class="block">
+                <div class="muted">本月已兑换</div>
+                <div class="num">{{points_redeemed_month}}</div>
+            </div>
+            <div class="block">
+                <div class="muted">当前剩余积分</div>
+                <div class="num">{{points_balance}}</div>
+            </div>
+        </div>
+
+
+
+        <!-- English Section -->
+        <h3 style="margin-top:32px;">📘 English Report</h3>
+        <p>Here is your points summary for <strong>{{report_month}}</strong>:</p>
+
+        <div class="summary">
+            <div class="block">
+                <div class="muted">Points Earned</div>
+                <div class="num">{{points_earned_month}}</div>
+            </div>
+            <div class="block">
+                <div class="muted">Points Redeemed</div>
+                <div class="num">{{points_redeemed_month}}</div>
+            </div>
+            <div class="block">
+                <div class="muted">Current Balance</div>
+                <div class="num">{{points_balance}}</div>
+            </div>
+        </div>
+
+
+        <div class="footer">
+            R2CN · 如需帮助请联系 support@r2cn.example
+            <br />For assistance, contact support@r2cn.example
+        </div>
+    </div>
+</body>
+
+</html>
