@@ -1,9 +1,9 @@
-use std::{env, fs};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 use axum::extract::State;
 use entity::{student, task};
-use lettre::message::{header, Attachment, Body, MultiPart, SinglePart};
+use lettre::message::{Attachment, Body, MultiPart, SinglePart, header};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use service::model::score::ScoreDto;
@@ -90,7 +90,10 @@ impl EmailSender {
             path.push("templates/*");
             Tera::new(path.to_str().unwrap())
                 .map_err(|e| format!("Tera 初始化失败: {}", e))
-                .and_then(|t| t.render(&self.template_name, &self.context).map_err(|e| format!("Tera 渲染失败: {}", e)))
+                .and_then(|t| {
+                    t.render(&self.template_name, &self.context)
+                        .map_err(|e| format!("Tera 渲染失败: {}", e))
+                })
         };
 
         let html_body = match render_result {
@@ -135,7 +138,7 @@ impl EmailSender {
 
         match mailer.send(&email) {
             Ok(_) => tracing::info!("邮件发送成功: to {} ", self.receiver),
-            Err(e) => tracing::error!("邮件发送失败: {:?}, to {}", e,self.receiver),
+            Err(e) => tracing::error!("邮件发送失败: {:?}, to {}", e, self.receiver),
         }
     }
 
@@ -154,13 +157,12 @@ impl EmailSender {
                 email_context.insert("mentor_name", &task.mentor_github_login);
                 email_context.insert("project_link", &util::project_link(&task));
 
-                let sender =
-                    EmailSender::new(
-                        "task_failed.mjml",
-                         "R2CN任务失败通知/R2CN Task Failure",
-                         email_context,
-                         &student.email
-                    );
+                let sender = EmailSender::new(
+                    "task_failed.mjml",
+                    "R2CN任务失败通知/R2CN Task Failure",
+                    email_context,
+                    &student.email,
+                );
                 sender.send();
             }
         }
@@ -249,10 +251,10 @@ pub mod util {
 mod test {
     use std::env;
 
-    use super::{cid_images_for_template, create_cid_attachment, render_mjml, EmailSender};
+    use super::{EmailSender, cid_images_for_template, create_cid_attachment, render_mjml};
     use lettre::{
         Message, SmtpTransport, Transport,
-        message::{header, MultiPart, SinglePart},
+        message::{MultiPart, SinglePart, header},
         transport::smtp::authentication::Credentials,
     };
 
@@ -303,7 +305,7 @@ mod test {
             multipart = multipart.singlepart(part);
         }
         let email = Message::builder()
-             .from("no-reply@r2cn.dev".parse().unwrap())
+            .from("no-reply@r2cn.dev".parse().unwrap())
             .to(sender.receiver.parse().unwrap())
             .subject(sender.subject.clone())
             .multipart(multipart)
