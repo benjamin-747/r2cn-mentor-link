@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>R2CN 月度积分报告 / Monthly Points Summary</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "HarmonyOS Sans SC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #333333;
+            transform: scale(0.65);
+            transform-origin: center 0;
+            display: flex;
+            justify-content: center;
+            width: 100vw;
+        }
+
+
+        .container {
+            width: 939px;
+            height: 783px;
+            margin: 20px auto 20px auto;
+            background: #FFFFFF;
+            box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -2px #0000000d;
+            border-radius: 40px;
+        }
+
+        .header {
+            height: 144px;
+            background: #1C1917;
+            border-radius: 38px 38px 0 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .logo {
+            padding-left: 38px;
+            color: #ffffff;
+            text-align: justify;
+            font-size: 30px;
+            font-weight: 700;
+        }
+
+        .topic {
+            padding-left: 38px;
+            margin-top: 4px;
+            color: #ffffff;
+            text-align: justify;
+            font-size: 20px;
+            font-weight: 400;
+        }
+
+        .right {
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .content {
+            width: 100%;
+        }
+
+        .zh-body,
+        .en-body {
+            padding: 39px 38px;
+        }
+
+        .text {
+            display: flex;
+            width: 856px;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        h2 {
+            margin: 0;
+            color: #AE6CFF;
+            text-align: justify;
+            font-size: 28px;
+            font-weight: 500;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        hr {
+            width: 874.5px;
+            margin: 0 auto;
+            border: none;
+            border-top: 1px solid #3333331a;
+        }
+
+        .dear-name-container {
+            display: flex;
+            align-items: center;
+            height: 21px;
+            padding-top: 25px;
+            padding-bottom: 11px;
+        }
+
+        .dear,
+        .name,
+        .text-container,
+        .text-container span,
+        .footer a {
+            font-size: 18px;
+            font-weight: 400;
+            line-height: normal;
+            text-align: justify;
+        }
+
+        .dear {
+            padding-right: 4px;
+        }
+
+        .name {
+            color: #1B7DFD;
+        }
+
+        .text-container {
+            width: 856px;
+            height: 110px;
+            display: flex;
+            text-align: justify;
+            margin-top:15px ;
+
+        }
+
+        .text-container span {
+            color: #1B7DFD;
+        }
+
+        .operation {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .btn {
+            width: 120px;
+            height: 48px;
+            border-radius: 8px;
+            text-decoration: none !important;
+            text-align: center;
+            line-height: 48px;
+            font-size: 18px;
+        }
+
+        .tutor {
+            background: #1B7DFD;
+            color: #333333 !important;
+        }
+
+        .check {
+            background: #1C1917;
+            color: #ffffff !important;
+        }
+
+        .footer {
+            width: 939px;
+            height: 55px;
+            text-align: center;
+            line-height: 55px;
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .footer a {
+            color: #549efe;
+        }
+
+        .text-card {
+            display: flex;
+            width: 213px;
+            height: 92px;
+            margin-right: 20px;
+            flex-direction: column;
+            align-items: center;
+            border-radius: 12px;
+            background: #F5F5F4;
+        }
+
+        .muted{
+            padding-top:19px;
+            color: #33333366;
+            text-align: justify;
+            font-size: 18px;
+            font-style: normal;
+            font-weight: 500;
+            line-height: normal;
+            text-transform: capitalize;
+        }
+        .num{
+            padding-top:8px;
+            color: #1c1917;
+            text-align: justify;
+            font-size: 28px;
+            font-style: normal;
+            font-weight: 700;
+            line-height: normal;
+            text-transform: capitalize;
+        }
+    </style>
+</head>
+<body>
+
+
+<div class="container" role="article" aria-label="R2CN 月度积分报告 / Monthly Points Summary
+">
+    <div class="header">
+        <div class="left">
+            <div class="logo">R2CN</div>
+            <div class="topic">月度积分报告 · Monthly Points report </div>
+        </div>
+        <div class="right">
+            <img src="cid:background"
+                    alt="R2CN"
+                    width="393"
+                    height="144">
+        </div>
+
+    </div>
+
+    <div class="content">
+        <div class="zh-body">
+            <div class="text">
+                <div class="title-row">
+
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAADzElEQVR4AbyVW2hUVxSG/z2mTS0+2DZFpKU3KaW15MWn9qE1VbCkre0k9UGxBR8U48wgIopJvBxRo3gByUX0xRdvEJ3EeFeUGERfRVFBUFEY8MFoXgzeZ/utk8lxzIwRE3HY/6y9115r/fvs8+99YnpHv1cSBYGPdST8L+mkD9qT/nBb0l8BPeBxDnexl0BHe8ovbUv4nyznVesuIDqS8qVtKb+ovFu3njl1OWmFlyop8D0YDd7L4WPseDDVe62S07nyO7oO4aJtc7zFMPWivUS0r8aXP8zqgrzWE/I5kJy6IdqPr0FSDcT/GfAlwFp8h8A9IGK/Aus/fV/necpxyvtFROkF/pvYCHXJ6Tubp0jaeU2++InGVDe7eFWLq69qdlvjzW6nAd8WUIfvr4/KNMZiWcARywXjecozrXP9Z/TDFhHpiTbhGQ1BL/ibIv/GW9ypIHBZ/IO2isA9tVgW8IdzmkHwEzC2pEQbsGGLiFjNFPPEnNZBcsD6Q0G8ye0hzxaNUVjTOhERg5GAV6FHZocDtu2p5bMzpWYN+UQ2FkzL9yb8pL7Bm/+juj/ZvoUDMwuJpFEjnE5wPnbsn+d/HphQbBxw5tKcOXJaEdNBYsLdwUatGJE9tvlnZmM6S3IG7E6nfB12FpiWwyxWv5x+K2cuw1N0UXUasGZiMBvBCkYD65AwG1sLbgNrJtHpyHcNg+2gNYftrH4lfSs+Fmst453qQcoG+Sgg4kX2cjbWcTa+oPhkL61Fkcd5dzdJfADChr+Xzg1wlLkGYioulunL6ibXQNECQeEjNK+R8IMNK3JnA6nXcT5+58B+zQI+BM6AfxR2HKhkrp6Y00GQO3NZ/Wg18lFAxEpruUT/yQ96kz65M73T/IE5BUQElELWTsJhMLEz8CX4Bm0Wsy/pp3AZnyR3B8EFOQVEBNreC1sJOnvu6jbKauNz0dCe8DVcltPpzwDzUN0a5jp6unWHQsdImgQJRmEN6/eD+f5un+UKSqKmxYz6VOdVRj/Ou6tlS7Yglt30d4EW4uqYmwrs84FRBt988PoDS6Heqia3wVTnY/qN5ZmiiqqOJ75G9aPkrIa4wlRHbiOrH1R1oXRJiFRX3eg6c4oqqjqU962prrrFLSumOs5kWJPFCHIz4mkV3tisshYRvB3VZftqil9EpBItYWxfyrelugxbv4KaYYuI4pvdTcX0q7yu2gxPNmTVkX+ZbZvILZGhH7aIyEZVje7S/ZGawD4OS3UfOE3gA3jdavbjJSJz/r/RDVt1lU1uUNUZTwS764asuqjKi85zAAAA//+/TIg7AAAABklEQVQDALHG2kSM6AB/AAAAAElFTkSuQmCC" width="26" height="26"
+                    />
+
+                    <h2>亲爱的 {{student_name}} 以下是您本月详细的积分明细</h2>
+                </div>
+
+                <div class="text-container">
+                    <div class="text-card">
+                        <div class="muted">本月获得积分</div>
+                        <div class="num">{{points_earned_month}}</div>
+                    </div>
+                    <div class="text-card">
+                        <div class="muted">本月将兑换</div>
+                        <div class="num">{{points_redeemed_month}}</div>
+                    </div>
+                    <div class="text-card">
+                        <div class="muted">当前剩余积分</div>
+                        <div class="num">{{points_balance}}</div>
+                    </div>
+                </div>
+
+            </div>
+
+
+        </div>
+        <hr style="margin-top: 48px">
+        <div class="en-body">
+            <div class="text">
+                <div class="title-row">
+
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAADzElEQVR4AbyVW2hUVxSG/z2mTS0+2DZFpKU3KaW15MWn9qE1VbCkre0k9UGxBR8U48wgIopJvBxRo3gByUX0xRdvEJ3EeFeUGERfRVFBUFEY8MFoXgzeZ/utk8lxzIwRE3HY/6y9115r/fvs8+99YnpHv1cSBYGPdST8L+mkD9qT/nBb0l8BPeBxDnexl0BHe8ovbUv4nyznVesuIDqS8qVtKb+ovFu3njl1OWmFlyop8D0YDd7L4WPseDDVe62S07nyO7oO4aJtc7zFMPWivUS0r8aXP8zqgrzWE/I5kJy6IdqPr0FSDcT/GfAlwFp8h8A9IGK/Aus/fV/necpxyvtFROkF/pvYCHXJ6Tubp0jaeU2++InGVDe7eFWLq69qdlvjzW6nAd8WUIfvr4/KNMZiWcARywXjecozrXP9Z/TDFhHpiTbhGQ1BL/ibIv/GW9ypIHBZ/IO2isA9tVgW8IdzmkHwEzC2pEQbsGGLiFjNFPPEnNZBcsD6Q0G8ye0hzxaNUVjTOhERg5GAV6FHZocDtu2p5bMzpWYN+UQ2FkzL9yb8pL7Bm/+juj/ZvoUDMwuJpFEjnE5wPnbsn+d/HphQbBxw5tKcOXJaEdNBYsLdwUatGJE9tvlnZmM6S3IG7E6nfB12FpiWwyxWv5x+K2cuw1N0UXUasGZiMBvBCkYD65AwG1sLbgNrJtHpyHcNg+2gNYftrH4lfSs+Fmst453qQcoG+Sgg4kX2cjbWcTa+oPhkL61Fkcd5dzdJfADChr+Xzg1wlLkGYioulunL6ibXQNECQeEjNK+R8IMNK3JnA6nXcT5+58B+zQI+BM6AfxR2HKhkrp6Y00GQO3NZ/Wg18lFAxEpruUT/yQ96kz65M73T/IE5BUQElELWTsJhMLEz8CX4Bm0Wsy/pp3AZnyR3B8EFOQVEBNreC1sJOnvu6jbKauNz0dCe8DVcltPpzwDzUN0a5jp6unWHQsdImgQJRmEN6/eD+f5un+UKSqKmxYz6VOdVRj/Ou6tlS7Yglt30d4EW4uqYmwrs84FRBt988PoDS6Heqia3wVTnY/qN5ZmiiqqOJ75G9aPkrIa4wlRHbiOrH1R1oXRJiFRX3eg6c4oqqjqU962prrrFLSumOs5kWJPFCHIz4mkV3tisshYRvB3VZftqil9EpBItYWxfyrelugxbv4KaYYuI4pvdTcX0q7yu2gxPNmTVkX+ZbZvILZGhH7aIyEZVje7S/ZGawD4OS3UfOE3gA3jdavbjJSJz/r/RDVt1lU1uUNUZTwS764asuqjKi85zAAAA//+/TIg7AAAABklEQVQDALHG2kSM6AB/AAAAAElFTkSuQmCC" width="26" height="26"
+                    />
+
+                    <h2>Dear {{student_name}}, Here Is Your Points Details For This Month.</h2>
+                </div>
+                <div class="text-container">
+                    <div class="text-card">
+                        <div class="muted">get points</div>
+                        <div class="num">{{points_earned_month}}</div>
+                    </div>
+                    <div class="text-card">
+                        <div class="muted">Redeemed</div>
+                        <div class="num">{{points_redeemed_month}}</div>
+                    </div>
+                    <div class="text-card">
+                        <div class="muted">remaining points</div>
+                        <div class="num">{{points_balance}}</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <hr style="margin-top: 68px">
+    <div class="footer">
+    </div>
+</div>
+
+
+</body>
+</html>

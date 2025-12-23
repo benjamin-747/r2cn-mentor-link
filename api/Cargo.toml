@@ -13,6 +13,7 @@ service = { workspace = true }
 entity = { workspace = true }
 migration = { workspace = true }
 common = { workspace = true }
+mrml = "4"
 
 tokio = { workspace = true, features = ["full"] }
 sea-orm = { workspace = true, features = [
