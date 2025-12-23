@@ -1,0 +1,127 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-all font-family="HarmonyOS Sans SC, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" />
+      <mj-text font-size="18px" color="#333333" line-height="1.5" />
+      <mj-section padding="0" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .name { color: #1B7DFD; }
+      .highlight { color: #1B7DFD; }
+      .footer-link { color: #549efe; text-decoration: none; font-size: 18px; }
+      .email-wrapper { min-height: 803px; border: 1px solid #E5E5E5; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); margin-bottom: 20px !important; transform: scale(0.65); transform-origin: top center; }
+      div.email-wrapper { margin-bottom: 20px !important; transform: scale(0.65) !important; transform-origin: top center !important; }
+      table.email-wrapper { margin-bottom: 20px !important; transform: scale(0.65) !important; transform-origin: top center !important; }
+      .header-section table { height: 100%; }
+      .header-section td { height: 100%; vertical-align: middle; overflow: hidden; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#f5f5f5" width="939px" >
+    <mj-wrapper padding="0" background-color="#FFFFFF" border-radius="40px" css-class="email-wrapper" style="margin-bottom: 20px !important;">
+      <!-- Header -->
+      <mj-section background-color="#1C1917" border-radius="38px 38px 0 0" padding="0" css-class="header-section">
+        <mj-column padding="30px 38px" vertical-align="middle">
+          <mj-text color="#ffffff" font-size="30px" font-weight="700" padding="0">R2CN</mj-text>
+          <mj-text color="#ffffff" font-size="20px" padding="4px 0 0 0">任务已认领 · Task assigned</mj-text>
+        </mj-column>
+        <mj-column vertical-align="middle" padding="0">
+          <mj-raw>
+            <img src="cid:background" style="display: block; margin-left: auto; object-fit: none; width: auto;" />
+          </mj-raw>
+        </mj-column>
+      </mj-section>
+
+      <!-- Chinese Content -->
+      <mj-section padding="40px 38px 0 38px">
+        <mj-column>
+          <mj-text color="#33C191" font-size="28px" font-weight="500" padding="0">
+            <img src="cid:task_status" width="28" style="vertical-align: middle; margin-right: 10px;" alt="" />
+            你已认领新的任务
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="25px 38px 0 38px">
+        <mj-column>
+          <mj-text padding="0">
+            亲爱的 <span class="name">{{student_name}}</span>
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="11px 38px 0 38px">
+        <mj-column>
+          <mj-text padding="0">
+            你已认领任务：<span class="highlight">{{task_title}}</span>。请尽快与导师 <span class="highlight">{{mentor_name}}</span> 沟通并确认设计方案与时间节点。
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="24px 38px 40px 38px">
+        <mj-column>
+          <mj-button href="{{task_link}}" background-color="#1C1917" color="#ffffff" border-radius="8px" font-size="18px" padding="0" inner-padding="12px 24px" align="left">
+            查看任务
+          </mj-button>
+        </mj-column>
+      </mj-section>
+
+      <!-- Divider -->
+      <mj-section padding="0 38px">
+        <mj-column>
+            <mj-divider border-width="1px" border-style="solid"  padding="0" border-color="#33333319"  />
+
+        </mj-column>
+      </mj-section>
+
+      <!-- English Content -->
+      <mj-section padding="40px 38px 0 38px">
+        <mj-column>
+          <mj-text color="#33C191" font-size="28px" font-weight="500" padding="0">
+            <img src="cid:task_status" width="28" style="vertical-align: middle; margin-right: 10px;" alt="" />
+            New Task Assigned
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="25px 38px 0 38px">
+        <mj-column>
+          <mj-text padding="0">
+            Hi <span class="name">{{student_name}}</span>
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="11px 38px 0 38px">
+        <mj-column>
+          <mj-text padding="0">
+            You have claimed the task: <span class="highlight">{{task_title}}</span>. Please contact your mentor <span class="highlight">{{mentor_name}}</span> as soon as possible to confirm the design plan and timeline.
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="24px 38px 40px 38px">
+        <mj-column>
+          <mj-button href="{{task_link}}" background-color="#1C1917" color="#ffffff" border-radius="8px" font-size="18px" padding="0" inner-padding="12px 24px" align="left">
+            View
+          </mj-button>
+        </mj-column>
+      </mj-section>
+
+      <!-- Footer Divider -->
+      <mj-section padding="0 38px">
+        <mj-column>
+          <mj-divider border-color="#E5E5E5" border-width="1px" border-style="solid" padding="0" />
+        </mj-column>
+      </mj-section>
+
+      <!-- Footer -->
+      <mj-section padding="20px 38px">
+        <mj-column>
+          <mj-text align="center" padding="0">
+            <a href="{{project_link}}" class="footer-link">{{project_link}}</a>
+          </mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

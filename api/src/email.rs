@@ -1,15 +1,69 @@
-use std::env;
-use std::path::PathBuf;
+use std::{env, fs};
+use std::path::{Path, PathBuf};
 
 use axum::extract::State;
 use entity::{student, task};
-use lettre::message::{SinglePart, header};
+use lettre::message::{header, Attachment, Body, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use service::model::score::ScoreDto;
 use tera::{Context, Tera};
 
 use crate::AppState;
+
+// 用 mrml 将 MJML 转换为 HTML
+pub fn render_mjml(template_name: &str, context: &Context) -> Result<String, String> {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("templates/mjml/*");
+    let tera = Tera::new(path.to_str().unwrap()).map_err(|e| format!("Tera 初始化失败: {}", e))?;
+    let mjml_content = tera
+        .render(template_name, context)
+        .map_err(|e| format!("Tera 渲染失败: {}", e))?;
+
+    let mjml_content = mjml_content.replace("\r\n", "\n");
+
+    let root = mrml::parse(&mjml_content).map_err(|e| format!("MJML 解析失败: {}", e))?;
+    let opts = mrml::prelude::render::RenderOptions::default();
+    let html = root
+        .render(&opts)
+        .map_err(|e| format!("MJML 渲染失败: {}", e))?;
+    Ok(html)
+}
+
+/// 创建带有 Content-ID 的内嵌图片附件
+pub fn create_cid_attachment(image_path: &str, cid: &str) -> Result<SinglePart, String> {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push(image_path);
+    let image_data = fs::read(Path::new(&path)).map_err(|e| format!("读取图片失败: {}", e))?;
+
+    let body = Body::new(image_data);
+    let content_type_header: header::ContentType = "image/png".parse().unwrap();
+    Ok(Attachment::new_inline(cid.to_string()).body(body, content_type_header))
+}
+
+/// 根据模板名称获取需要内嵌的图片
+pub fn cid_images_for_template(template_name: &str) -> Vec<(&'static str, &'static str)> {
+    let mut imgs: Vec<(&'static str, &'static str)> =
+        vec![("templates/image/background.png", "background")];
+
+    match template_name {
+        "task_assigned.mjml" => {
+            imgs.push(("templates/image/task_assigned.png", "task_status"));
+        }
+        "task_failed.mjml" => {
+            imgs.push(("templates/image/task_failed.png", "task_status"));
+        }
+        "task_completed_points.mjml" => {
+            imgs.push(("templates/image/task_completed.png", "task_status"));
+        }
+        "monthly_points_summary.mjml" => {
+            imgs.push(("templates/image/task_points.png", "task_status"));
+        }
+        _ => {}
+    }
+
+    imgs
+}
 
 pub struct EmailSender {
     template_name: String,
@@ -29,20 +83,48 @@ impl EmailSender {
     }
 
     pub fn send(&self) {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("templates/*");
-        let tera = Tera::new(path.to_str().unwrap()).unwrap();
-        let html_body = tera.render(&self.template_name, &self.context).unwrap();
-        let email = Message::builder()
+        let render_result = if self.template_name.ends_with(".mjml") {
+            render_mjml(&self.template_name, &self.context)
+        } else {
+            let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            path.push("templates/*");
+            Tera::new(path.to_str().unwrap())
+                .map_err(|e| format!("Tera 初始化失败: {}", e))
+                .and_then(|t| t.render(&self.template_name, &self.context).map_err(|e| format!("Tera 渲染失败: {}", e)))
+        };
+
+        let html_body = match render_result {
+            Ok(body) => body,
+            Err(e) => {
+                tracing::error!("邮件模板渲染失败: {}", e);
+                return;
+            }
+        };
+
+        let html_part = SinglePart::builder()
+            .header(header::ContentType::TEXT_HTML)
+            .body(html_body);
+
+        let mut email_builder = Message::builder()
             .from("no-reply@r2cn.dev".parse().unwrap())
             .to(self.receiver.parse().unwrap())
-            .subject(self.subject.clone())
-            .singlepart(
-                SinglePart::builder()
-                    .header(header::ContentType::TEXT_HTML)
-                    .body(html_body),
-            )
-            .unwrap();
+            .subject(self.subject.clone());
+
+        let email = if self.template_name.ends_with(".mjml") {
+            let mut multipart = MultiPart::related().singlepart(html_part);
+            for (img_path, cid) in cid_images_for_template(&self.template_name) {
+                match create_cid_attachment(img_path, cid) {
+                    Ok(part) => {
+                        multipart = multipart.singlepart(part);
+                    }
+                    Err(err) => tracing::warn!("内嵌图片加载失败 {}: {}", img_path, err),
+                }
+            }
+            email_builder.multipart(multipart)
+        } else {
+            email_builder.singlepart(html_part)
+        }
+        .unwrap();
 
         let creds = Credentials::new(env::var("ZEPTO_AK").unwrap(), env::var("ZEPTO_SK").unwrap());
 
@@ -72,12 +154,13 @@ impl EmailSender {
                 email_context.insert("mentor_name", &task.mentor_github_login);
                 email_context.insert("project_link", &util::project_link(&task));
 
-                let sender = EmailSender::new(
-                    "task_failed.html",
-                    "R2CN任务失败通知/R2CN Task Failure",
-                    email_context,
-                    &student.email,
-                );
+                let sender =
+                    EmailSender::new(
+                        "task_failed.mjml",
+                         "R2CN任务失败通知/R2CN Task Failure",
+                         email_context,
+                         &student.email
+                    );
                 sender.send();
             }
         }
@@ -99,7 +182,7 @@ impl EmailSender {
             email_context.insert("mentor_name", &task.mentor_github_login);
             email_context.insert("project_link", &util::project_link(&task));
             let sender = EmailSender::new(
-                "task_assigned.html",
+                "task_assigned.mjml",
                 "R2CN任务认领通知/R2CN Task Assigned",
                 email_context,
                 &student.email,
@@ -124,7 +207,7 @@ impl EmailSender {
                 email_context.insert("points_total", &balance);
                 email_context.insert("project_link", &util::project_link(&task));
                 let sender = EmailSender::new(
-                    "task_completed_points.html",
+                    "task_completed_points.mjml",
                     "R2CN任务完成通知/R2CN Task Successful",
                     email_context,
                     &student.email,
@@ -143,7 +226,7 @@ impl EmailSender {
             email_context.insert("points_balance", &last_month.score_balance());
 
             let sender = EmailSender::new(
-                "monthly_points_summary.html",
+                "monthly_points_summary.mjml",
                 "R2CN月度积分报告/R2CN Monthly Score Report",
                 email_context,
                 &student.email,
@@ -166,16 +249,12 @@ pub mod util {
 mod test {
     use std::env;
 
-    use super::EmailSender;
+    use super::{cid_images_for_template, create_cid_attachment, render_mjml, EmailSender};
     use lettre::{
         Message, SmtpTransport, Transport,
-        message::{
-            SinglePart,
-            header::{self},
-        },
+        message::{header, MultiPart, SinglePart},
         transport::smtp::authentication::Credentials,
     };
-    use tera::Tera;
 
     #[test]
     pub fn test_email() {
@@ -207,23 +286,27 @@ mod test {
         email_context.insert("points_balance", "15");
 
         let sender = EmailSender::new(
-            "task_assigned.html",
+            "task_assigned.mjml",
             "R2CN任务完成",
             email_context,
             "yetianxing2014@gmail.com",
         );
 
-        let tera = Tera::new("templates/*").unwrap();
-        let html_body = tera.render(&sender.template_name, &sender.context).unwrap();
+        let html_body = render_mjml(&sender.template_name, &sender.context).unwrap();
+        let mut multipart = MultiPart::related().singlepart(
+            SinglePart::builder()
+                .header(header::ContentType::TEXT_HTML)
+                .body(html_body),
+        );
+        for (img_path, cid) in cid_images_for_template(&sender.template_name) {
+            let part = create_cid_attachment(img_path, cid).unwrap();
+            multipart = multipart.singlepart(part);
+        }
         let email = Message::builder()
-            .from("no-reply@r2cn.dev".parse().unwrap())
+             .from("no-reply@r2cn.dev".parse().unwrap())
             .to(sender.receiver.parse().unwrap())
             .subject(sender.subject.clone())
-            .singlepart(
-                SinglePart::builder()
-                    .header(header::ContentType::TEXT_HTML)
-                    .body(html_body),
-            )
+            .multipart(multipart)
             .unwrap();
 
         let creds = Credentials::new(env::var("ZEPTO_AK").unwrap(), env::var("ZEPTO_SK").unwrap());
