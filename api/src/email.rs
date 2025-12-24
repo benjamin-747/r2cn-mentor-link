@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use axum::extract::State;
+use chrono::{Datelike, NaiveDate};
 use entity::{student, task};
 use lettre::message::{Attachment, Body, MultiPart, SinglePart, header};
 use lettre::transport::smtp::authentication::Credentials;
@@ -10,6 +11,18 @@ use service::model::score::ScoreDto;
 use tera::{Context, Tera};
 
 use crate::AppState;
+
+enum Lang {
+    Zh,
+    En,
+}
+
+fn month_name(date: NaiveDate, lang: Lang) -> String {
+    match lang {
+        Lang::En => date.format("%b").to_string(),
+        Lang::Zh => format!("{}月", date.month()),
+    }
+}
 
 // 用 mrml 将 MJML 转换为 HTML
 pub fn render_mjml(template_name: &str, context: &Context) -> Result<String, String> {
@@ -108,7 +121,7 @@ impl EmailSender {
             .header(header::ContentType::TEXT_HTML)
             .body(html_body);
 
-        let mut email_builder = Message::builder()
+        let email_builder = Message::builder()
             .from("no-reply@r2cn.dev".parse().unwrap())
             .to(self.receiver.parse().unwrap())
             .subject(self.subject.clone());
@@ -227,9 +240,17 @@ impl EmailSender {
             email_context.insert("points_redeemed_month", &last_month.consumption_score);
             email_context.insert("points_balance", &last_month.score_balance());
 
+            let date =
+                NaiveDate::from_ymd_opt(last_month.year, last_month.month as u32, 1).unwrap();
+
+            let subject = format!(
+                "R2CN{}积分报告/R2CN Monthly Score Report - {}.",
+                month_name(date, Lang::Zh),
+                month_name(date, Lang::En)
+            );
             let sender = EmailSender::new(
                 "monthly_points_summary.mjml",
-                "R2CN月度积分报告/R2CN Monthly Score Report",
+                &subject,
                 email_context,
                 &student.email,
             );
