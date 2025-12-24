@@ -185,7 +185,7 @@ impl TaskStorage {
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn intern_close(&self, github_issue_id: i64) -> Result<(), anyhow::Error> {
+    pub async fn intern_close(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task = self
             .search_task_with_issue_id(github_issue_id)
             .await?
@@ -194,9 +194,9 @@ impl TaskStorage {
                 github_issue_id
             )))?;
         if task.task_status != TaskStatus::Finished {
-            let task: task::ActiveModel = task.into();
+            let task: task::ActiveModel = task.clone().into();
             task.delete(self.get_connection()).await?;
         }
-        Ok(())
+        Ok(task)
     }
 }

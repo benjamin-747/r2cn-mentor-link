@@ -11,6 +11,7 @@ use service::model::score::ScoreDto;
 
 use crate::{
     AppState,
+    email::EmailSender,
     model::{
         score::NewScore,
         task::{CommandRequest, NewTask, SearchTask, Task, UpdateScoreRequest},
@@ -120,7 +121,10 @@ async fn intern_approve(
     let res = state.task_stg().intern_approve(json.github_issue_id).await;
 
     let res = match res {
-        Ok(_) => CommonResult::success(Some(true)),
+        Ok(task) => {
+            tokio::spawn(async move { EmailSender::assigned_email(state, task).await });
+            CommonResult::success(Some(true))
+        }
         Err(err) => CommonResult::failed(&err.to_string()),
     };
     Ok(Json(res))
@@ -130,8 +134,16 @@ async fn release_task(
     state: State<AppState>,
     Json(json): Json<CommandRequest>,
 ) -> Result<Json<CommonResult<bool>>, CommonError> {
-    let res = state.task_stg().release_task(json.github_issue_id).await;
+    let task = state
+        .task_stg()
+        .search_task_with_issue_id(json.github_issue_id)
+        .await
+        .unwrap()
+        .unwrap();
 
+    let moved_state = state.clone();
+    tokio::spawn(async move { EmailSender::failed_email(moved_state, task).await });
+    let res = state.task_stg().release_task(json.github_issue_id).await;
     let res = match res {
         Ok(_) => CommonResult::success(Some(true)),
         Err(err) => CommonResult::failed(&err.to_string()),
@@ -207,32 +219,10 @@ async fn intern_done(
             .unwrap();
         new_score.carryover_score + new_score.score
     };
-    let stu_stg = state.student_stg();
-    let student = stu_stg
-        .get_student_by_login(&task.mentor_github_login)
-        .await
-        .unwrap();
 
-    if let Some(student) = student {
-        tracing::info!(
-            "{} new_score: {}, total_score:{}",
-            student.email,
-            task.score,
-            balance
-        )
-        //     let mut email_context = tera::Context::new();
-        //     email_context.insert("new_score", &task.score);
-        //     email_context.insert("total_score", &balance);
-        //     email_context.insert("task_link", "");
-        //     email_context.insert("task_title", &task.github_issue_title);
-        //     let sender = EmailSender::new(
-        //         "score_count_email.html",
-        //         "R2CN任务完成",
-        //         email_context,
-        //         &student.email,
-        //     );
-        //     sender.send();
-    }
+    let moved_task = task.clone();
+    tokio::spawn(async move { EmailSender::complete_email(state, moved_task, balance).await });
+
     Ok(Json(CommonResult::success(Some(task))))
 }
 
@@ -240,10 +230,11 @@ async fn intern_close(
     state: State<AppState>,
     Json(json): Json<CommandRequest>,
 ) -> Result<Json<CommonResult<bool>>, CommonError> {
-    state
+    let task = state
         .task_stg()
         .intern_close(json.github_issue_id)
         .await
         .unwrap();
+    tokio::spawn(async move { EmailSender::failed_email(state, task).await });
     Ok(Json(CommonResult::success(Some(true))))
 }

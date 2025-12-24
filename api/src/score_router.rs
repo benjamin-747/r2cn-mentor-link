@@ -16,7 +16,7 @@ use common::{date::get_last_month, errors::CommonError, model::CommonResult};
 use entity::monthly_score;
 use service::model::score::{CommonScore, ScoreDto, load_score_strategy};
 
-use crate::{AppState, model::score::ExportExcel};
+use crate::{AppState, email::EmailSender, model::score::ExportExcel};
 
 pub fn routers() -> Router<AppState> {
     Router::new().nest(
@@ -163,7 +163,7 @@ async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>
             .await
             .unwrap();
         let consume_score = {
-            let strategy = if let Some(student) = student {
+            let strategy = if let Some(student) = &student {
                 load_score_strategy(student, calculate_month)
             } else {
                 tracing::error!("Invalid Student Status:{}", model.github_login);
@@ -186,9 +186,14 @@ async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>
         let last_month: ScoreDto = a_model.try_into_model().unwrap().into();
         state
             .score_stg()
-            .insert_or_update_carryover_score(last_month)
+            .insert_or_update_carryover_score(last_month.clone())
             .await
             .unwrap();
+        if last_month.new_score != 0 {
+            tokio::spawn(
+                async move { EmailSender::monthly_score_email(student, last_month).await },
+            );
+        }
     }
     Ok(Json(CommonResult::success(None)))
 }

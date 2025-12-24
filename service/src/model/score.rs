@@ -38,7 +38,7 @@ impl ScoreStrategy for DeadlineScore {
     }
 }
 
-pub fn load_score_strategy(student: student::Model, date: NaiveDate) -> Box<dyn ScoreStrategy> {
+pub fn load_score_strategy(student: &student::Model, date: NaiveDate) -> Box<dyn ScoreStrategy> {
     // 此处计算的时候抹去了合同的日期，只计算到月份，日期默认为1号
     if let Some(contract_end_date) = student.contract_end_date
         && contract_end_date <= date
