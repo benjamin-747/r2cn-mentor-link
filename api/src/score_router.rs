@@ -190,9 +190,10 @@ async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>
             .await
             .unwrap();
         if last_month.new_score != 0 {
-            tokio::spawn(
-                async move { EmailSender::monthly_score_email(student, last_month).await },
-            );
+            let state_clone = state.clone();
+            tokio::spawn(async move {
+                EmailSender::monthly_score_email(state_clone, student, last_month).await
+            });
         }
     }
     Ok(Json(CommonResult::success(None)))

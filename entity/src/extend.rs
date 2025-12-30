@@ -9,4 +9,8 @@ impl TaskStatus {
             TaskStatus::RequestFinish,
         ]
     }
+
+    pub fn finish_tash_status() -> Vec<TaskStatus> {
+        vec![TaskStatus::Finished]
+    }
 }
