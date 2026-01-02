@@ -94,12 +94,9 @@ impl EmailSender {
         subject: &str,
         context: Context,
         receiver: &str,
-        cc_email: Vec<Option<&str>>,
+        cc_email: Vec<Option<String>>,
     ) -> Self {
-        let cc_email: Vec<String> = cc_email
-            .into_iter()
-            .filter_map(|s| s.map(|s| s.to_owned()))
-            .collect();
+        let cc_email: Vec<String> = cc_email.into_iter().flatten().collect();
 
         EmailSender {
             template_name: template_name.to_owned(),
@@ -190,7 +187,7 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_github_login = &task.mentor_github_login;
-            let cc_email: Option<&str> = state
+            let cc_email: Option<String> = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_github_login)
                 .await
@@ -198,12 +195,11 @@ impl EmailSender {
                 .and_then(|model| {
                     let mentor: MentorRes = model.into();
                     if mentor.status == MentorStatus::Active {
-                        Some(&mentor_github_login)
+                        Some(mentor.email)
                     } else {
                         None
                     }
-                })
-                .map(|s| s.as_str());
+                });
 
             if let Some(student) = student {
                 let mut email_context = tera::Context::new();
@@ -235,7 +231,7 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_github_login = &task.mentor_github_login;
-            let cc_email: Option<&str> = state
+            let cc_email: Option<String> = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_github_login)
                 .await
@@ -243,12 +239,11 @@ impl EmailSender {
                 .and_then(|model| {
                     let mentor: MentorRes = model.into();
                     if mentor.status == MentorStatus::Active {
-                        Some(&mentor_github_login)
+                        Some(mentor.email)
                     } else {
                         None
                     }
-                })
-                .map(|s| s.as_str());
+                });
 
             let mut email_context = tera::Context::new();
             email_context.insert("student_name", &student.student_name);
@@ -276,7 +271,7 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_github_login = &task.mentor_github_login;
-            let cc_email: Option<&str> = state
+            let cc_email: Option<String> = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_github_login)
                 .await
@@ -284,12 +279,11 @@ impl EmailSender {
                 .and_then(|model| {
                     let mentor: MentorRes = model.into();
                     if mentor.status == MentorStatus::Active {
-                        Some(&mentor_github_login)
+                        Some(mentor.email)
                     } else {
                         None
                     }
-                })
-                .map(|s| s.as_str());
+                });
 
             if let Some(student) = student {
                 let mut email_context = tera::Context::new();
@@ -343,11 +337,11 @@ impl EmailSender {
                 mentors.push(mentor);
             }
 
-            let active_mentor_emails: Vec<Option<&str>> = mentors
+            let active_mentor_emails: Vec<Option<String>> = mentors
                 .iter()
                 .filter_map(|m| m.as_ref())
                 .filter(|model| model.status == "active")
-                .map(|model| Some(model.email.as_str()))
+                .map(|model| Some(model.email.clone()))
                 .collect();
 
             let date =
@@ -424,7 +418,7 @@ mod test {
             "R2CN任务完成",
             email_context,
             "yetianxing2014@gmail.com",
-            vec![Some("yetianxing2014@gmail.com")],
+            vec![Some("yetianxing2014@gmail.com".to_owned())],
         );
 
         let html_body = render_mjml(&sender.template_name, &sender.context).unwrap();
