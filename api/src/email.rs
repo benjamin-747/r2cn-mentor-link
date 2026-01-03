@@ -317,17 +317,19 @@ impl EmailSender {
             email_context.insert("points_redeemed_month", &last_month.consumption_score);
             email_context.insert("points_balance", &last_month.score_balance());
 
-            let finished_tasks = state
+            let finished_tasks_last_month = state
                 .task_stg()
-                .get_student_tasks_with_status_in_current_month(
+                .get_student_tasks_with_status_in_month(
                     &student.github_login,
                     TaskStatus::finish_tash_status(),
+                    last_month.year,
+                    last_month.month,
                 )
                 .await
                 .unwrap();
 
-            let mut mentors = Vec::with_capacity(finished_tasks.len()); // 预先分配空间
-            for task in &finished_tasks {
+            let mut mentors = Vec::with_capacity(finished_tasks_last_month.len());
+            for task in &finished_tasks_last_month {
                 let mentor_login = &task.mentor_github_login;
                 let mentor = state
                     .mentor_stg()
