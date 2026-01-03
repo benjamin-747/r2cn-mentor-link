@@ -21,8 +21,12 @@ async fn new_mentor(
     Json(json): Json<NewMentor>,
 ) -> Result<Json<CommonResult<MentorRes>>, CommonError> {
     let active_model = json.into();
-    let res = state.mentor_stg().new_mentor(active_model).await.unwrap();
-    Ok(Json(CommonResult::success(Some(res.into()))))
+    let res = state.mentor_stg().new_mentor(active_model).await;
+    let res = match res {
+        Ok(model) => CommonResult::success(Some(model.into())),
+        Err(err) => CommonResult::failed(&err.to_string()),
+    };
+    Ok(Json(res))
 }
 
 async fn change_mentor_status(

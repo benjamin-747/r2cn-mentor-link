@@ -24,7 +24,7 @@ impl From<NewMentor> for mentor::ActiveModel {
             name: Set(value.name),
             email: Set(value.email),
             github_login: Set(value.github_login),
-            status: Set(MentorStatus::Active.into()),
+            status: Set(value.status),
             created_at: Set(chrono::Utc::now().naive_utc()),
             updated_at: Set(chrono::Utc::now().naive_utc()),
         }

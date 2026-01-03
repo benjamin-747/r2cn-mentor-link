@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::{env, fs, vec};
 
@@ -321,27 +322,29 @@ impl EmailSender {
                 .task_stg()
                 .get_student_tasks_with_status_in_month(
                     &student.github_login,
-                    TaskStatus::finish_tash_status(),
+                    TaskStatus::finish_task_status(),
                     last_month.year,
                     last_month.month,
                 )
                 .await
                 .unwrap();
 
-            let mut mentors = Vec::with_capacity(finished_tasks_last_month.len());
-            for task in &finished_tasks_last_month {
-                let mentor_login = &task.mentor_github_login;
-                let mentor = state
-                    .mentor_stg()
-                    .get_mentor_by_login(mentor_login)
-                    .await
-                    .unwrap();
-                mentors.push(mentor);
-            }
+            let mentor_logins = finished_tasks_last_month
+                .iter()
+                .map(|t| t.mentor_github_login.clone())
+                .filter(|login| !login.is_empty())
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect();
+
+            let mentors = state
+                .mentor_stg()
+                .get_mentors_by_logins(mentor_logins)
+                .await
+                .unwrap();
 
             let active_mentor_emails: Vec<Option<String>> = mentors
                 .iter()
-                .filter_map(|m| m.as_ref())
                 .filter(|model| model.status == "active")
                 .map(|model| Some(model.email.clone()))
                 .collect();

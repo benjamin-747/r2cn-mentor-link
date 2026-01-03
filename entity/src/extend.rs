@@ -10,7 +10,7 @@ impl TaskStatus {
         ]
     }
 
-    pub fn finish_tash_status() -> Vec<TaskStatus> {
+    pub fn finish_task_status() -> Vec<TaskStatus> {
         vec![TaskStatus::Finished]
     }
 }

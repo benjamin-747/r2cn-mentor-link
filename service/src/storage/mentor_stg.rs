@@ -83,6 +83,18 @@ impl MentorStorage {
         Ok(record)
     }
 
+    pub async fn get_mentors_by_logins(
+        &self,
+        logins: Vec<String>,
+    ) -> Result<Vec<mentor::Model>, anyhow::Error> {
+        let mentors = mentor::Entity::find()
+            .filter(mentor::Column::GithubLogin.is_in(logins))
+            .all(self.get_connection())
+            .await?;
+
+        Ok(mentors)
+    }
+
     pub async fn new_mentor(
         &self,
         active_model: mentor::ActiveModel,
