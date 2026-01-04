@@ -103,6 +103,24 @@ impl TaskStorage {
         Ok(tasks)
     }
 
+    pub async fn get_student_tasks_with_status_in_month(
+        &self,
+        login: &str,
+        status: Vec<TaskStatus>,
+        year: i32,
+        month: i32,
+    ) -> Result<Vec<task::Model>, anyhow::Error> {
+        let tasks = task::Entity::find()
+            .filter(task::Column::StudentGithubLogin.eq(login))
+            .filter(task::Column::TaskStatus.is_in(status))
+            .filter(task::Column::FinishYear.eq(year))
+            .filter(task::Column::FinishMonth.eq(month))
+            .all(self.get_connection())
+            .await?;
+
+        Ok(tasks)
+    }
+
     pub async fn request_assign(
         &self,
         github_issue_id: i64,

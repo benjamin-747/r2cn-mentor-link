@@ -4,20 +4,17 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "monthly_score")]
+#[sea_orm(table_name = "mentor")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    pub name: String,
+    pub email: String,
+    #[sea_orm(unique)]
     pub github_login: String,
-    pub student_name: String,
-    pub year: i32,
-    pub month: i32,
-    pub carryover_score: i32,
-    pub new_score: i32,
-    pub consumption_score: i32,
-    pub exchanged: i32,
-    pub create_at: DateTime,
-    pub update_at: DateTime,
+    pub status: String,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

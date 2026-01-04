@@ -1,5 +1,6 @@
 mod confernece_router;
 mod email;
+mod mentor_router;
 mod model;
 mod score_router;
 mod student_router;
@@ -12,7 +13,10 @@ use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
 use service::{
     Context,
-    storage::{score_stg::ScoreStorage, student_stg::StudentStorage, task_stg::TaskStorage},
+    storage::{
+        mentor_stg::MentorStorage, score_stg::ScoreStorage, student_stg::StudentStorage,
+        task_stg::TaskStorage,
+    },
 };
 use tower_cookies::CookieManagerLayer;
 use tower_http::trace::TraceLayer;
@@ -42,7 +46,8 @@ async fn start() -> anyhow::Result<()> {
         .merge(confernece_router::routers())
         .merge(task_router::routers())
         .merge(student_router::routers())
-        .merge(score_router::routers());
+        .merge(score_router::routers())
+        .merge(mentor_router::routers());
 
     let app = Router::new()
         .nest("/api/v1/", api_router)
@@ -72,6 +77,10 @@ impl AppState {
 
     fn student_stg(&self) -> StudentStorage {
         self.context.services.student_stg.clone()
+    }
+
+    fn mentor_stg(&self) -> MentorStorage {
+        self.context.services.mentor_stg.clone()
     }
 }
 

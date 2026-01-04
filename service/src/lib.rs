@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use sea_orm::DatabaseConnection;
 use storage::{
-    conference_stg::ConferenceStorage, score_stg::ScoreStorage, student_stg::StudentStorage,
-    task_stg::TaskStorage,
+    conference_stg::ConferenceStorage, mentor_stg::MentorStorage, score_stg::ScoreStorage,
+    student_stg::StudentStorage, task_stg::TaskStorage,
 };
 
 pub mod model;
@@ -37,6 +37,10 @@ impl Context {
     pub fn student_stg(&self) -> StudentStorage {
         self.services.student_stg.clone()
     }
+
+    pub fn mentor_stg(&self) -> MentorStorage {
+        self.services.mentor_stg.clone()
+    }
 }
 
 #[derive(Clone)]
@@ -45,6 +49,7 @@ pub struct Service {
     pub task_stg: TaskStorage,
     pub score_stg: ScoreStorage,
     pub student_stg: StudentStorage,
+    pub mentor_stg: MentorStorage,
 }
 
 impl Service {
@@ -53,6 +58,7 @@ impl Service {
             conference_stg: ConferenceStorage::new(connection.clone()).await,
             task_stg: TaskStorage::new(connection.clone()).await,
             score_stg: ScoreStorage::new(connection.clone()).await,
+            mentor_stg: MentorStorage::new(connection.clone()).await,
             student_stg: StudentStorage::new(connection).await,
         }
     }

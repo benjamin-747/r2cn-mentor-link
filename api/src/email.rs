@@ -1,13 +1,16 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::{env, fs, vec};
 
 use axum::extract::State;
 use chrono::{Datelike, NaiveDate};
+use entity::sea_orm_active_enums::TaskStatus;
 use entity::{student, task};
 use lettre::message::{Attachment, Body, MultiPart, SinglePart, header};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use service::model::score::ScoreDto;
+use service::storage::mentor_stg::{MentorRes, MentorStatus};
 use tera::{Context, Tera};
 
 use crate::AppState;
@@ -83,15 +86,25 @@ pub struct EmailSender {
     subject: String,
     context: Context,
     receiver: String,
+    cc_email: Vec<String>,
 }
 
 impl EmailSender {
-    pub fn new(template_name: &str, subject: &str, context: Context, receiver: &str) -> Self {
+    pub fn new(
+        template_name: &str,
+        subject: &str,
+        context: Context,
+        receiver: &str,
+        cc_email: Vec<Option<String>>,
+    ) -> Self {
+        let cc_email: Vec<String> = cc_email.into_iter().flatten().collect();
+
         EmailSender {
             template_name: template_name.to_owned(),
             subject: subject.to_owned(),
             context,
             receiver: receiver.to_owned(),
+            cc_email,
         }
     }
 
@@ -121,10 +134,21 @@ impl EmailSender {
             .header(header::ContentType::TEXT_HTML)
             .body(html_body);
 
-        let email_builder = Message::builder()
+        let mut email_builder = Message::builder()
             .from("no-reply@r2cn.dev".parse().unwrap())
             .to(self.receiver.parse().unwrap())
             .subject(self.subject.clone());
+
+        for cc_addr in &self.cc_email {
+            match cc_addr.parse() {
+                Ok(mailbox) => {
+                    email_builder = email_builder.cc(mailbox);
+                }
+                Err(e) => {
+                    tracing::warn!("无效的 CC 邮箱 {}: {}", cc_addr, e);
+                }
+            }
+        }
 
         let email = if self.template_name.ends_with(".mjml") {
             let mut multipart = MultiPart::related().singlepart(html_part);
@@ -162,6 +186,22 @@ impl EmailSender {
                 .get_student_by_login(student_github_login)
                 .await
                 .unwrap();
+
+            let mentor_github_login = &task.mentor_github_login;
+            let cc_email: Option<String> = state
+                .mentor_stg()
+                .get_mentor_by_login(mentor_github_login)
+                .await
+                .unwrap()
+                .and_then(|model| {
+                    let mentor: MentorRes = model.into();
+                    if mentor.status == MentorStatus::Active {
+                        Some(mentor.email)
+                    } else {
+                        None
+                    }
+                });
+
             if let Some(student) = student {
                 let mut email_context = tera::Context::new();
                 email_context.insert("student_name", &student.student_name);
@@ -175,6 +215,7 @@ impl EmailSender {
                     "R2CN任务失败通知/R2CN Task Failure",
                     email_context,
                     &student.email,
+                    vec![cc_email],
                 );
                 sender.send();
             }
@@ -190,6 +231,21 @@ impl EmailSender {
                 .unwrap()
                 .unwrap();
 
+            let mentor_github_login = &task.mentor_github_login;
+            let cc_email: Option<String> = state
+                .mentor_stg()
+                .get_mentor_by_login(mentor_github_login)
+                .await
+                .unwrap()
+                .and_then(|model| {
+                    let mentor: MentorRes = model.into();
+                    if mentor.status == MentorStatus::Active {
+                        Some(mentor.email)
+                    } else {
+                        None
+                    }
+                });
+
             let mut email_context = tera::Context::new();
             email_context.insert("student_name", &student.student_name);
             email_context.insert("task_title", &task.github_issue_title);
@@ -201,6 +257,7 @@ impl EmailSender {
                 "R2CN任务认领通知/R2CN Task Assigned",
                 email_context,
                 &student.email,
+                vec![cc_email],
             );
             sender.send();
         }
@@ -213,6 +270,22 @@ impl EmailSender {
                 .get_student_by_login(student_github_login)
                 .await
                 .unwrap();
+
+            let mentor_github_login = &task.mentor_github_login;
+            let cc_email: Option<String> = state
+                .mentor_stg()
+                .get_mentor_by_login(mentor_github_login)
+                .await
+                .unwrap()
+                .and_then(|model| {
+                    let mentor: MentorRes = model.into();
+                    if mentor.status == MentorStatus::Active {
+                        Some(mentor.email)
+                    } else {
+                        None
+                    }
+                });
+
             if let Some(student) = student {
                 let mut email_context = tera::Context::new();
                 email_context.insert("student_name", &student.student_name);
@@ -226,19 +299,55 @@ impl EmailSender {
                     "R2CN任务完成通知/R2CN Task Successful",
                     email_context,
                     &student.email,
+                    vec![cc_email],
                 );
                 sender.send();
             }
         }
     }
 
-    pub async fn monthly_score_email(student: Option<student::Model>, last_month: ScoreDto) {
+    pub async fn monthly_score_email(
+        state: State<AppState>,
+        student: Option<student::Model>,
+        last_month: ScoreDto,
+    ) {
         if let Some(student) = student {
             let mut email_context = tera::Context::new();
             email_context.insert("student_name", &student.student_name);
             email_context.insert("points_earned_month", &last_month.new_score);
             email_context.insert("points_redeemed_month", &last_month.consumption_score);
             email_context.insert("points_balance", &last_month.score_balance());
+
+            let finished_tasks_last_month = state
+                .task_stg()
+                .get_student_tasks_with_status_in_month(
+                    &student.github_login,
+                    TaskStatus::finish_task_status(),
+                    last_month.year,
+                    last_month.month,
+                )
+                .await
+                .unwrap();
+
+            let mentor_logins = finished_tasks_last_month
+                .iter()
+                .map(|t| t.mentor_github_login.clone())
+                .filter(|login| !login.is_empty())
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect();
+
+            let mentors = state
+                .mentor_stg()
+                .get_mentors_by_logins(mentor_logins)
+                .await
+                .unwrap();
+
+            let active_mentor_emails: Vec<Option<String>> = mentors
+                .iter()
+                .filter(|model| model.status == "active")
+                .map(|model| Some(model.email.clone()))
+                .collect();
 
             let date =
                 NaiveDate::from_ymd_opt(last_month.year, last_month.month as u32, 1).unwrap();
@@ -253,6 +362,7 @@ impl EmailSender {
                 &subject,
                 email_context,
                 &student.email,
+                active_mentor_emails,
             );
             sender.send();
         }
@@ -313,6 +423,7 @@ mod test {
             "R2CN任务完成",
             email_context,
             "yetianxing2014@gmail.com",
+            vec![Some("yetianxing2014@gmail.com".to_owned())],
         );
 
         let html_body = render_mjml(&sender.template_name, &sender.context).unwrap();
