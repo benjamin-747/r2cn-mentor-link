@@ -72,6 +72,14 @@ impl MentorStorage {
         MentorStorage { connection }
     }
 
+    pub async fn get_active_mentors(&self) -> Result<Vec<mentor::Model>, anyhow::Error> {
+        let record = mentor::Entity::find()
+            .filter(mentor::Column::Status.eq("active"))
+            .all(self.get_connection())
+            .await?;
+        Ok(record)
+    }
+
     pub async fn get_mentor_by_login(
         &self,
         login: &str,

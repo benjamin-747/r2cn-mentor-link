@@ -1,5 +1,6 @@
 mod confernece_router;
 mod email;
+mod email_route;
 mod mentor_router;
 mod model;
 mod score_router;
@@ -47,7 +48,8 @@ async fn start() -> anyhow::Result<()> {
         .merge(task_router::routers())
         .merge(student_router::routers())
         .merge(score_router::routers())
-        .merge(mentor_router::routers());
+        .merge(mentor_router::routers())
+        .merge(email_route::routers());
 
     let app = Router::new()
         .nest("/api/v1/", api_router)

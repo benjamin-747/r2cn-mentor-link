@@ -1,3 +1,4 @@
+pub mod email;
 pub mod huawei_meeting;
 pub mod mentor;
 pub mod score;

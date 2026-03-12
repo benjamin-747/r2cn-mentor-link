@@ -22,6 +22,15 @@ impl StudentStorage {
         StudentStorage { connection }
     }
 
+    pub async fn get_active_students(
+        &self,
+    ) -> Result<Vec<student::Model>, anyhow::Error> {
+        let record = student::Entity::find()
+            .all(self.get_connection())
+            .await?;
+        Ok(record)
+    }
+
     pub async fn get_student_by_login(
         &self,
         login: &str,
