@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::{env, fs, vec};
 
+use anyhow::{Context, Error};
 use axum::extract::State;
 use chrono::{Datelike, NaiveDate};
 use entity::sea_orm_active_enums::TaskStatus;
@@ -9,9 +10,10 @@ use entity::{student, task};
 use lettre::message::{Attachment, Body, MultiPart, SinglePart, header};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
+use serde_json::json;
 use service::model::score::ScoreDto;
 use service::storage::mentor_stg::{MentorRes, MentorStatus};
-use tera::{Context, Tera};
+use tera::Tera;
 
 use crate::AppState;
 
@@ -28,29 +30,27 @@ fn month_name(date: NaiveDate, lang: Lang) -> String {
 }
 
 // 用 mrml 将 MJML 转换为 HTML
-pub fn render_mjml(template_name: &str, context: &Context) -> Result<String, String> {
+pub fn render_mjml(template_name: &str, context: &tera::Context) -> Result<String, anyhow::Error> {
     let mut base = PathBuf::from(std::env::var("TEMPLATE_DIR").expect("TEMPLATE_DIR not set"));
     base.push("templates/mjml/*");
-    let tera = Tera::new(base.to_str().unwrap()).map_err(|e| format!("Tera 初始化失败: {}", e))?;
+    let tera = Tera::new(base.to_str().unwrap()).context("Tera 初始化失败")?;
     let mjml_content = tera
         .render(template_name, context)
-        .map_err(|e| format!("Tera 渲染失败: {}", e))?;
+        .context("Tera 渲染失败")?;
 
     let mjml_content = mjml_content.replace("\r\n", "\n");
 
-    let root = mrml::parse(&mjml_content).map_err(|e| format!("MJML 解析失败: {}", e))?;
+    let root = mrml::parse(&mjml_content).context("MJML 解析失败")?;
     let opts = mrml::prelude::render::RenderOptions::default();
-    let html = root
-        .render(&opts)
-        .map_err(|e| format!("MJML 渲染失败: {}", e))?;
+    let html = root.render(&opts).context("MJML 渲染失败")?;
     Ok(html)
 }
 
 /// 创建带有 Content-ID 的内嵌图片附件
-pub fn create_cid_attachment(image_path: &str, cid: &str) -> Result<SinglePart, String> {
+pub fn create_cid_attachment(image_path: &str, cid: &str) -> Result<SinglePart, anyhow::Error> {
     let mut base = PathBuf::from(std::env::var("TEMPLATE_DIR").expect("TEMPLATE_DIR not set"));
     base.push(image_path);
-    let image_data = fs::read(Path::new(&base)).map_err(|e| format!("读取图片失败: {}", e))?;
+    let image_data = fs::read(Path::new(&base)).context("读取图片失败")?;
 
     let body = Body::new(image_data);
     let content_type_header: header::ContentType = "image/png".parse().unwrap();
@@ -81,55 +81,93 @@ pub fn cid_images_for_template(template_name: &str) -> Vec<(&'static str, &'stat
     imgs
 }
 
+pub enum EmailContent {
+    /// local HTML template
+    LocalTemplate {
+        template_name: String,
+        subject: String,
+        context: tera::Context,
+    },
+
+    /// ZeptoMail template
+    ZeptoTemplate {
+        template_id: String,
+        variables: serde_json::Value,
+    },
+}
+
 pub struct EmailSender {
-    template_name: String,
-    subject: String,
-    context: Context,
-    receiver: String,
+    content: EmailContent,
+    receivers: Vec<String>,
     cc_email: Vec<String>,
 }
 
 impl EmailSender {
-    pub fn new(
+    pub fn from_local_template(
         template_name: &str,
         subject: &str,
-        context: Context,
+        context: tera::Context,
         receiver: &str,
-        cc_email: Vec<Option<String>>,
+        cc_email: Vec<String>,
     ) -> Self {
-        let cc_email: Vec<String> = cc_email.into_iter().flatten().collect();
-
-        EmailSender {
-            template_name: template_name.to_owned(),
-            subject: subject.to_owned(),
-            context,
-            receiver: receiver.to_owned(),
+        Self {
+            receivers: vec![receiver.to_string()],
             cc_email,
+            content: EmailContent::LocalTemplate {
+                template_name: template_name.to_string(),
+                subject: subject.to_string(),
+                context,
+            },
         }
     }
 
-    pub fn send(&self) {
-        let render_result = if self.template_name.ends_with(".mjml") {
-            render_mjml(&self.template_name, &self.context)
+    pub fn from_zeptomail_template(
+        template_id: &str,
+        variables: serde_json::Value,
+        receivers: Vec<String>,
+        cc_email: Vec<String>,
+    ) -> Self {
+        Self {
+            receivers,
+            cc_email,
+            content: EmailContent::ZeptoTemplate {
+                template_id: template_id.to_string(),
+                variables,
+            },
+        }
+    }
+
+    pub async fn send(&self) -> Result<(), Error> {
+        match &self.content {
+            EmailContent::LocalTemplate {
+                template_name,
+                subject,
+                context,
+            } => self.send_local(template_name, subject, context).await,
+
+            EmailContent::ZeptoTemplate {
+                template_id,
+                variables,
+            } => self.send_zeptomail(template_id, variables).await,
+        }
+    }
+
+    async fn send_local(
+        &self,
+        template_name: &str,
+        subject: &str,
+        context: &tera::Context,
+    ) -> Result<(), Error> {
+        let html_body = if template_name.ends_with(".mjml") {
+            render_mjml(template_name, context)
         } else {
             let mut base =
                 PathBuf::from(std::env::var("TEMPLATE_DIR").expect("TEMPLATE_DIR not set"));
             base.push("templates/*");
             Tera::new(base.to_str().unwrap())
-                .map_err(|e| format!("Tera 初始化失败: {}", e))
-                .and_then(|t| {
-                    t.render(&self.template_name, &self.context)
-                        .map_err(|e| format!("Tera 渲染失败: {}", e))
-                })
-        };
-
-        let html_body = match render_result {
-            Ok(body) => body,
-            Err(e) => {
-                tracing::error!("邮件模板渲染失败: {}", e);
-                return;
-            }
-        };
+                .context("Tera 初始化失败")
+                .and_then(|t| t.render(template_name, context).context("Tera 渲染失败: "))
+        }?;
 
         let html_part = SinglePart::builder()
             .header(header::ContentType::TEXT_HTML)
@@ -137,8 +175,8 @@ impl EmailSender {
 
         let mut email_builder = Message::builder()
             .from("no-reply@r2cn.dev".parse().unwrap())
-            .to(self.receiver.parse().unwrap())
-            .subject(self.subject.clone());
+            .to(self.receivers[0].parse().unwrap())
+            .subject(subject);
 
         for cc_addr in &self.cc_email {
             match cc_addr.parse() {
@@ -151,9 +189,9 @@ impl EmailSender {
             }
         }
 
-        let email = if self.template_name.ends_with(".mjml") {
+        let email = if template_name.ends_with(".mjml") {
             let mut multipart = MultiPart::related().singlepart(html_part);
-            for (img_path, cid) in cid_images_for_template(&self.template_name) {
+            for (img_path, cid) in cid_images_for_template(template_name) {
                 match create_cid_attachment(img_path, cid) {
                     Ok(part) => {
                         multipart = multipart.singlepart(part);
@@ -164,8 +202,7 @@ impl EmailSender {
             email_builder.multipart(multipart)
         } else {
             email_builder.singlepart(html_part)
-        }
-        .unwrap();
+        }?;
 
         let creds = Credentials::new(env::var("ZEPTO_AK").unwrap(), env::var("ZEPTO_SK").unwrap());
 
@@ -175,9 +212,85 @@ impl EmailSender {
             .build();
 
         match mailer.send(&email) {
-            Ok(_) => tracing::info!("邮件发送成功: to {} ", self.receiver),
-            Err(e) => tracing::error!("邮件发送失败: {:?}, to {}", e, self.receiver),
+            Ok(_) => tracing::info!("邮件发送成功: to {} ", self.receivers[0]),
+            Err(e) => tracing::error!("邮件发送失败: {:?}, to {}", e, self.receivers[0]),
         }
+
+        Ok(())
+    }
+
+    async fn send_zeptomail(
+        &self,
+        template_id: &str,
+        _variables: &serde_json::Value,
+    ) -> Result<(), Error> {
+        let to_list: Vec<_> = self
+            .receivers
+            .iter()
+            .map(|email| {
+                json!({
+                    "email_address": {
+                        "address": email
+                    }
+                })
+            })
+            .collect();
+
+        let body = json!({
+            "template_key": template_id,
+            "from": { "address": "no-reply@r2cn.dev" },
+            "to": to_list
+        });
+
+        let resp = reqwest::Client::new()
+            .post("https://api.zeptomail.com/v1.1/email/template/batch")
+            .header(
+                "Authorization",
+                format!("Zoho-enczapikey {}", env::var("ZEPTO_SK").unwrap()),
+            )
+            .json(&body)
+            .send()
+            .await?;
+
+        if resp.status().is_success() {
+            Ok(())
+        } else {
+            let body = resp.text().await?;
+            tracing::error!("sending result: {}", body);
+            Err(anyhow::Error::msg(body))
+        }
+    }
+
+    pub async fn notice_all_email(state: State<AppState>, template_id: &str) -> Result<(), Error> {
+        let active_mentor_emails: Vec<String> = state
+            .mentor_stg()
+            .get_active_mentors()
+            .await
+            .unwrap()
+            .iter()
+            .map(|model| model.email.clone())
+            .collect();
+
+        let active_student_emails: Vec<String> = state
+            .student_stg()
+            .get_active_students()
+            .await
+            .unwrap()
+            .iter()
+            .map(|m| m.email.clone())
+            .collect();
+        let mut sending_emails = HashSet::new();
+        sending_emails.extend(active_mentor_emails);
+        sending_emails.extend(active_student_emails);
+        tracing::info!("sending emails {:?}", sending_emails);
+
+        let sender = EmailSender::from_zeptomail_template(
+            template_id,
+            serde_json::Value::Null,
+            sending_emails.into_iter().collect(),
+            vec![],
+        );
+        sender.send().await
     }
 
     pub async fn failed_email(state: State<AppState>, task: task::Model) {
@@ -189,19 +302,16 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_github_login = &task.mentor_github_login;
-            let cc_email: Option<String> = state
+            let cc_email: Vec<String> = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_github_login)
                 .await
                 .unwrap()
-                .and_then(|model| {
-                    let mentor: MentorRes = model.into();
-                    if mentor.status == MentorStatus::Active {
-                        Some(mentor.email)
-                    } else {
-                        None
-                    }
-                });
+                .map(|model| model.into())
+                .filter(|mentor: &MentorRes| mentor.status == MentorStatus::Active)
+                .map(|mentor| mentor.email)
+                .into_iter()
+                .collect();
 
             if let Some(student) = student {
                 let mut email_context = tera::Context::new();
@@ -211,14 +321,14 @@ impl EmailSender {
                 email_context.insert("mentor_name", &task.mentor_github_login);
                 email_context.insert("project_link", &util::project_link(&task));
 
-                let sender = EmailSender::new(
+                let sender = EmailSender::from_local_template(
                     "task_failed.mjml",
                     "R2CN任务失败通知/R2CN Task Failure",
                     email_context,
                     &student.email,
-                    vec![cc_email],
+                    cc_email,
                 );
-                sender.send();
+                sender.send().await.unwrap();
             }
         }
     }
@@ -233,19 +343,16 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_github_login = &task.mentor_github_login;
-            let cc_email: Option<String> = state
+            let cc_email: Vec<String> = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_github_login)
                 .await
                 .unwrap()
-                .and_then(|model| {
-                    let mentor: MentorRes = model.into();
-                    if mentor.status == MentorStatus::Active {
-                        Some(mentor.email)
-                    } else {
-                        None
-                    }
-                });
+                .map(|model| model.into())
+                .filter(|mentor: &MentorRes| mentor.status == MentorStatus::Active)
+                .map(|mentor| mentor.email)
+                .into_iter()
+                .collect();
 
             let mut email_context = tera::Context::new();
             email_context.insert("student_name", &student.student_name);
@@ -253,14 +360,14 @@ impl EmailSender {
             email_context.insert("task_link", &task.github_issue_link);
             email_context.insert("mentor_name", &task.mentor_github_login);
             email_context.insert("project_link", &util::project_link(&task));
-            let sender = EmailSender::new(
+            let sender = EmailSender::from_local_template(
                 "task_assigned.mjml",
                 "R2CN任务认领通知/R2CN Task Assigned",
                 email_context,
                 &student.email,
-                vec![cc_email],
+                cc_email,
             );
-            sender.send();
+            sender.send().await.unwrap();
         }
     }
 
@@ -273,19 +380,16 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_github_login = &task.mentor_github_login;
-            let cc_email: Option<String> = state
+            let cc_email: Vec<String> = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_github_login)
                 .await
                 .unwrap()
-                .and_then(|model| {
-                    let mentor: MentorRes = model.into();
-                    if mentor.status == MentorStatus::Active {
-                        Some(mentor.email)
-                    } else {
-                        None
-                    }
-                });
+                .map(|model| model.into())
+                .filter(|mentor: &MentorRes| mentor.status == MentorStatus::Active)
+                .map(|mentor| mentor.email)
+                .into_iter()
+                .collect();
 
             if let Some(student) = student {
                 let mut email_context = tera::Context::new();
@@ -295,14 +399,14 @@ impl EmailSender {
                 email_context.insert("mentor_name", &task.mentor_github_login);
                 email_context.insert("points_total", &balance);
                 email_context.insert("project_link", &util::project_link(&task));
-                let sender = EmailSender::new(
+                let sender = EmailSender::from_local_template(
                     "task_completed_points.mjml",
                     "R2CN任务完成通知/R2CN Task Successful",
                     email_context,
                     &student.email,
-                    vec![cc_email],
+                    cc_email,
                 );
-                sender.send();
+                sender.send().await.unwrap();
             }
         }
     }
@@ -344,10 +448,10 @@ impl EmailSender {
                 .await
                 .unwrap();
 
-            let active_mentor_emails: Vec<Option<String>> = mentors
+            let active_mentor_emails: Vec<String> = mentors
                 .iter()
                 .filter(|model| model.status == "active")
-                .map(|model| Some(model.email.clone()))
+                .map(|model| model.email.clone())
                 .collect();
 
             let date =
@@ -358,14 +462,14 @@ impl EmailSender {
                 month_name(date, Lang::Zh),
                 month_name(date, Lang::En)
             );
-            let sender = EmailSender::new(
+            let sender = EmailSender::from_local_template(
                 "monthly_points_summary.mjml",
                 &subject,
                 email_context,
                 &student.email,
                 active_mentor_emails,
             );
-            sender.send();
+            sender.send().await.unwrap();
         }
     }
 }
@@ -383,6 +487,8 @@ pub mod util {
 mod test {
     use std::env;
 
+    use crate::email::EmailContent;
+
     use super::{EmailSender, cid_images_for_template, create_cid_attachment, render_mjml};
     use lettre::{
         Message, SmtpTransport, Transport,
@@ -391,7 +497,7 @@ mod test {
     };
 
     #[test]
-    pub fn test_email() {
+    pub fn test_local_temp_email() {
         dotenvy::dotenv().ok();
 
         let mut email_context = tera::Context::new();
@@ -419,41 +525,72 @@ mod test {
         email_context.insert("points_redeemed_month", "100");
         email_context.insert("points_balance", "15");
 
-        let sender = EmailSender::new(
+        let sender = EmailSender::from_local_template(
             "task_assigned.mjml",
             "R2CN任务完成",
             email_context,
             "yetianxing2014@gmail.com",
-            vec![Some("yetianxing2014@gmail.com".to_owned())],
+            vec![("yetianxing2014@gmail.com".to_owned())],
         );
 
-        let html_body = render_mjml(&sender.template_name, &sender.context).unwrap();
-        let mut multipart = MultiPart::related().singlepart(
-            SinglePart::builder()
-                .header(header::ContentType::TEXT_HTML)
-                .body(html_body),
+        match sender.content {
+            EmailContent::LocalTemplate {
+                template_name,
+                subject,
+                context,
+            } => {
+                let html_body = render_mjml(&template_name, &context).unwrap();
+                let mut multipart = MultiPart::related().singlepart(
+                    SinglePart::builder()
+                        .header(header::ContentType::TEXT_HTML)
+                        .body(html_body),
+                );
+                for (img_path, cid) in cid_images_for_template(&template_name) {
+                    let part = create_cid_attachment(img_path, cid).unwrap();
+                    multipart = multipart.singlepart(part);
+                }
+                let email = Message::builder()
+                    .from("test-send@r2cn.dev".parse().unwrap())
+                    .to(sender.receivers[0].parse().unwrap())
+                    .subject(subject.clone())
+                    .multipart(multipart)
+                    .unwrap();
+
+                let creds =
+                    Credentials::new(env::var("ZEPTO_AK").unwrap(), env::var("ZEPTO_SK").unwrap());
+
+                let mailer = SmtpTransport::starttls_relay("smtp.zeptomail.com")
+                    .unwrap()
+                    .credentials(creds)
+                    .build();
+
+                match mailer.send(&email) {
+                    Ok(_) => println!("邮件发送成功"),
+                    Err(e) => eprintln!("邮件发送失败: {:?}", e),
+                }
+            }
+            EmailContent::ZeptoTemplate {
+                template_id: _,
+                variables: _,
+            } => {
+                todo!()
+            }
+        }
+    }
+
+    #[tokio::test]
+    pub async fn test_online_temp_email() {
+        dotenvy::dotenv().ok();
+
+        let sender = EmailSender::from_zeptomail_template(
+            "2d6f.48ef870ad8d4d3f2.k1.e5f70d71-1db7-11f1-ac5e-fae9afc80e45.19cdfca67c5",
+            serde_json::Value::Null,
+            vec![
+                "yetianxing2014@gmail.com".to_string(),
+                "715804430@qq.com".to_string(),
+            ],
+            vec![],
         );
-        for (img_path, cid) in cid_images_for_template(&sender.template_name) {
-            let part = create_cid_attachment(img_path, cid).unwrap();
-            multipart = multipart.singlepart(part);
-        }
-        let email = Message::builder()
-            .from("no-reply@r2cn.dev".parse().unwrap())
-            .to(sender.receiver.parse().unwrap())
-            .subject(sender.subject.clone())
-            .multipart(multipart)
-            .unwrap();
-
-        let creds = Credentials::new(env::var("ZEPTO_AK").unwrap(), env::var("ZEPTO_SK").unwrap());
-
-        let mailer = SmtpTransport::starttls_relay("smtp.zeptomail.com")
-            .unwrap()
-            .credentials(creds)
-            .build();
-
-        match mailer.send(&email) {
-            Ok(_) => println!("邮件发送成功"),
-            Err(e) => eprintln!("邮件发送失败: {:?}", e),
-        }
+        sender.send().await.unwrap();
     }
 }
