@@ -23,7 +23,8 @@ pub fn routers() -> Router<AppState> {
         "/score",
         Router::new()
             .route("/export-excel", get(export_excel))
-            .route("/calculate-monthly", post(calculate_bonus)),
+            .route("/calculate-monthly", post(calculate_bonus))
+            .route("/send-monthly-email", post(send_monthly_email)),
     )
 }
 
@@ -143,7 +144,7 @@ async fn export_excel(
     Ok(resp)
 }
 
-#[axum::debug_handler]
+// #[axum::debug_handler]
 async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>>, CommonError> {
     let now = Utc::now().naive_utc();
     let calculate_month = get_last_month(now.into());
@@ -189,10 +190,32 @@ async fn calculate_bonus(state: State<AppState>) -> Result<Json<CommonResult<()>
             .insert_or_update_carryover_score(last_month.clone())
             .await
             .unwrap();
-        if last_month.new_score != 0 {
-            let state_clone = state.clone();
+    }
+    Ok(Json(CommonResult::success(None)))
+}
+
+async fn send_monthly_email(state: State<AppState>) -> Result<Json<CommonResult<()>>, CommonError> {
+    let now = Utc::now().naive_utc();
+    let calculate_month = get_last_month(now.into());
+
+    let monthly_records = state
+        .score_stg()
+        .list_score_by_month(calculate_month.year(), calculate_month.month() as i32)
+        .await
+        .map_err(|e| CommonError::InvalidInput(e.to_string()))?;
+
+    for record in monthly_records {
+        let student = state
+            .student_stg()
+            .get_student_by_login(&record.github_login)
+            .await
+            .unwrap_or(None);
+
+        let last_month: ScoreDto = record.into();
+        let state_clone = state.clone();
+        if last_month.consumption_score != 0 {
             tokio::spawn(async move {
-                EmailSender::monthly_score_email(state_clone, student, last_month).await
+                EmailSender::monthly_score_email(state_clone, student, last_month).await;
             });
         }
     }

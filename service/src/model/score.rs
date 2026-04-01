@@ -19,9 +19,6 @@ impl ScoreStrategy for CommonScore {
         } else if score >= 40 {
             return 40;
         }
-        // else if score >= 20 {
-        //     return 20;
-        // }
         0
     }
 }
@@ -38,7 +35,21 @@ impl ScoreStrategy for DeadlineScore {
     }
 }
 
+/// 活动结束规则：一次性发放全部剩余积分
+pub struct ActivityEndScore;
+impl ScoreStrategy for ActivityEndScore {
+    fn consumed_score(&self, score: i32) -> i32 {
+        score
+    }
+}
+
 pub fn load_score_strategy(student: &student::Model, date: NaiveDate) -> Box<dyn ScoreStrategy> {
+    let activity_end_month =
+        NaiveDate::from_ymd_opt(2026, 3, 1).expect("valid activity end month");
+    if date >= activity_end_month {
+        return Box::new(ActivityEndScore);
+    }
+
     // 此处计算的时候抹去了合同的日期，只计算到月份，日期默认为1号
     if let Some(contract_end_date) = student.contract_end_date
         && contract_end_date <= date
