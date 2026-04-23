@@ -4,6 +4,7 @@ use service::storage::mentor_stg::MentorRes;
 
 use crate::{
     AppState,
+    application::mentor,
     model::mentor::{NewMentor, UpdateMentorStatusRequest},
 };
 
@@ -20,10 +21,9 @@ async fn new_mentor(
     state: State<AppState>,
     Json(json): Json<NewMentor>,
 ) -> Result<Json<CommonResult<MentorRes>>, CommonError> {
-    let active_model = json.into();
-    let res = state.mentor_stg().new_mentor(active_model).await;
+    let res = mentor::new_mentor(&state, json).await;
     let res = match res {
-        Ok(model) => CommonResult::success(Some(model.into())),
+        Ok(model) => CommonResult::success(Some(model)),
         Err(err) => CommonResult::failed(&err.to_string()),
     };
     Ok(Json(res))
@@ -33,13 +33,10 @@ async fn change_mentor_status(
     state: State<AppState>,
     Json(json): Json<UpdateMentorStatusRequest>,
 ) -> Result<Json<CommonResult<MentorRes>>, CommonError> {
-    let res = state
-        .mentor_stg()
-        .change_mentor_status(&json.login, json.status)
-        .await;
+    let res = mentor::change_mentor_status(&state, json).await;
 
     let res = match res {
-        Ok(model) => CommonResult::success(Some(model.into())),
+        Ok(model) => CommonResult::success(Some(model)),
         Err(err) => CommonResult::failed(&err.to_string()),
     };
     Ok(Json(res))

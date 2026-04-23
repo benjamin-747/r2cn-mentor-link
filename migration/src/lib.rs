@@ -5,6 +5,7 @@ mod m20250114_074736_monthly_score;
 mod m20250212_084656_create_student;
 mod m20250222_082628_alter_task;
 mod m20251226_023303_create_mentor;
+mod m20260421_081200_rename_columns;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250212_084656_create_student::Migration),
             Box::new(m20250222_082628_alter_task::Migration),
             Box::new(m20251226_023303_create_mentor::Migration),
+            Box::new(m20260421_081200_rename_columns::Migration),
         ]
     }
 }

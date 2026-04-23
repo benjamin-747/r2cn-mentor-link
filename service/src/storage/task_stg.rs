@@ -31,30 +31,30 @@ impl TaskStorage {
 
     pub async fn update_score(
         &self,
-        github_issue_id: i64,
-        github_issue_title: String,
+        issue_id: i64,
+        issue_title: String,
         score: i32,
     ) -> Result<task::Model, anyhow::Error> {
         let task = self
-            .search_task_with_issue_id(github_issue_id)
+            .search_task_with_issue_id(issue_id)
             .await?
             .ok_or(DbErr::RecordNotFound(format!(
                 "Task not found for issue_id {}",
-                github_issue_id
+                issue_id
             )))?;
         let mut task: task::ActiveModel = task.into();
         task.score = Set(score);
-        task.github_issue_title = Set(github_issue_title);
+        task.issue_title = Set(issue_title);
         task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
 
     pub async fn search_task_with_issue_id(
         &self,
-        github_issue_id: i64,
+        issue_id: i64,
     ) -> Result<Option<task::Model>, anyhow::Error> {
         let task = task::Entity::find()
-            .filter(task::Column::GithubIssueId.eq(github_issue_id))
+            .filter(task::Column::IssueId.eq(issue_id))
             .one(self.get_connection())
             .await?;
         Ok(task)
@@ -69,7 +69,7 @@ impl TaskStorage {
             .filter(task::Column::FinishYear.eq(finish_year))
             .filter(task::Column::FinishMonth.eq(finish_month))
             .filter(task::Column::TaskStatus.eq(TaskStatus::Finished))
-            .order_by_asc(task::Column::StudentGithubLogin)
+            .order_by_asc(task::Column::StudentId)
             .all(self.get_connection())
             .await?;
         Ok(task)
@@ -77,13 +77,13 @@ impl TaskStorage {
 
     pub async fn search_task_with_status(
         &self,
-        github_repo_id: i64,
-        github_mentor_login: String,
+        repo_id: i64,
+        mentor_login: String,
         status: Vec<TaskStatus>,
     ) -> Result<Vec<task::Model>, anyhow::Error> {
         let tasks: Vec<task::Model> = task::Entity::find()
-            .filter(task::Column::GithubRepoId.eq(github_repo_id))
-            .filter(task::Column::MentorGithubLogin.eq(github_mentor_login))
+            .filter(task::Column::RepoId.eq(repo_id))
+            .filter(task::Column::MentorLogin.eq(mentor_login))
             .filter(task::Column::TaskStatus.is_in(status))
             .all(self.get_connection())
             .await?;
@@ -92,11 +92,11 @@ impl TaskStorage {
 
     pub async fn search_student_task(
         &self,
-        login: String,
+        student_id: String,
         status: Vec<TaskStatus>,
     ) -> Result<Option<task::Model>, anyhow::Error> {
         let tasks = task::Entity::find()
-            .filter(task::Column::StudentGithubLogin.eq(login))
+            .filter(task::Column::StudentId.eq(student_id))
             .filter(task::Column::TaskStatus.is_in(status))
             .one(self.get_connection())
             .await?;
@@ -105,13 +105,13 @@ impl TaskStorage {
 
     pub async fn get_student_tasks_with_status_in_month(
         &self,
-        login: &str,
+        student_id: &str,
         status: Vec<TaskStatus>,
         year: i32,
         month: i32,
     ) -> Result<Vec<task::Model>, anyhow::Error> {
         let tasks = task::Entity::find()
-            .filter(task::Column::StudentGithubLogin.eq(login))
+            .filter(task::Column::StudentId.eq(student_id))
             .filter(task::Column::TaskStatus.is_in(status))
             .filter(task::Column::FinishYear.eq(year))
             .filter(task::Column::FinishMonth.eq(month))
@@ -123,46 +123,46 @@ impl TaskStorage {
 
     pub async fn request_assign(
         &self,
-        github_issue_id: i64,
-        login: String,
+        issue_id: i64,
+        student_id: String,
     ) -> Result<task::Model, anyhow::Error> {
         let task = self
-            .search_task_with_issue_id(github_issue_id)
+            .search_task_with_issue_id(issue_id)
             .await?
             .ok_or(DbErr::RecordNotFound(format!(
                 "Task not found for issue_id {}",
-                github_issue_id
+                issue_id
             )))?;
         let mut task: task::ActiveModel = task.into();
-        task.student_github_login = Set(Some(login));
+        task.student_id = Set(Some(student_id));
         task.task_status = Set(TaskStatus::RequestAssign);
         task.update_at = Set(Utc::now().naive_utc());
 
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn release_task(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
+    pub async fn release_task(&self, issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task = self
-            .search_task_with_issue_id(github_issue_id)
+            .search_task_with_issue_id(issue_id)
             .await?
             .ok_or(DbErr::RecordNotFound(format!(
                 "Task not found for issue_id {}",
-                github_issue_id
+                issue_id
             )))?;
         let mut task: task::ActiveModel = task.into();
-        task.student_github_login = Set(None);
+        task.student_id = Set(None);
         task.task_status = Set(TaskStatus::Open);
         task.update_at = Set(Utc::now().naive_utc());
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn intern_approve(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
+    pub async fn intern_approve(&self, issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task = self
-            .search_task_with_issue_id(github_issue_id)
+            .search_task_with_issue_id(issue_id)
             .await?
             .ok_or(DbErr::RecordNotFound(format!(
                 "Task not found for issue_id {}",
-                github_issue_id
+                issue_id
             )))?;
         let mut task: task::ActiveModel = task.into();
         task.task_status = Set(TaskStatus::Assigned);
@@ -170,16 +170,13 @@ impl TaskStorage {
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn request_complete(
-        &self,
-        github_issue_id: i64,
-    ) -> Result<task::Model, anyhow::Error> {
+    pub async fn request_complete(&self, issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task = self
-            .search_task_with_issue_id(github_issue_id)
+            .search_task_with_issue_id(issue_id)
             .await?
             .ok_or(DbErr::RecordNotFound(format!(
                 "Task not found for issue_id {}",
-                github_issue_id
+                issue_id
             )))?;
         let mut task: task::ActiveModel = task.into();
         task.task_status = Set(TaskStatus::RequestFinish);
@@ -187,13 +184,13 @@ impl TaskStorage {
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn intern_done(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
+    pub async fn intern_done(&self, issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task = self
-            .search_task_with_issue_id(github_issue_id)
+            .search_task_with_issue_id(issue_id)
             .await?
             .ok_or(DbErr::RecordNotFound(format!(
                 "Task not found for issue_id {}",
-                github_issue_id
+                issue_id
             )))?;
         let mut task: task::ActiveModel = task.into();
         task.task_status = Set(TaskStatus::Finished);
@@ -203,13 +200,13 @@ impl TaskStorage {
         Ok(task.update(self.get_connection()).await?)
     }
 
-    pub async fn intern_close(&self, github_issue_id: i64) -> Result<task::Model, anyhow::Error> {
+    pub async fn intern_close(&self, issue_id: i64) -> Result<task::Model, anyhow::Error> {
         let task = self
-            .search_task_with_issue_id(github_issue_id)
+            .search_task_with_issue_id(issue_id)
             .await?
             .ok_or(DbErr::RecordNotFound(format!(
                 "Task not found for issue_id {}",
-                github_issue_id
+                issue_id
             )))?;
         if task.task_status != TaskStatus::Finished {
             let task: task::ActiveModel = task.clone().into();

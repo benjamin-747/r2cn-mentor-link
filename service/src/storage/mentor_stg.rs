@@ -38,7 +38,7 @@ pub struct MentorRes {
     pub id: i32,
     pub name: String,
     pub email: String,
-    pub github_login: String,
+    pub login: String,
     pub status: MentorStatus,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -50,7 +50,7 @@ impl From<mentor::Model> for MentorRes {
             id: value.id,
             name: value.name,
             email: value.email,
-            github_login: value.github_login,
+            login: value.login,
             status: MentorStatus::from(value.status),
             created_at: value.created_at,
             updated_at: value.updated_at,
@@ -85,7 +85,7 @@ impl MentorStorage {
         login: &str,
     ) -> Result<Option<mentor::Model>, anyhow::Error> {
         let record = mentor::Entity::find()
-            .filter(mentor::Column::GithubLogin.eq(login))
+            .filter(mentor::Column::Login.eq(login))
             .one(self.get_connection())
             .await?;
         Ok(record)
@@ -96,7 +96,7 @@ impl MentorStorage {
         logins: Vec<String>,
     ) -> Result<Vec<mentor::Model>, anyhow::Error> {
         let mentors = mentor::Entity::find()
-            .filter(mentor::Column::GithubLogin.is_in(logins))
+            .filter(mentor::Column::Login.is_in(logins))
             .all(self.get_connection())
             .await?;
 
@@ -107,7 +107,7 @@ impl MentorStorage {
         &self,
         active_model: mentor::ActiveModel,
     ) -> Result<mentor::Model, anyhow::Error> {
-        let login = active_model.github_login.clone().unwrap();
+        let login = active_model.login.clone().unwrap();
 
         if self.get_mentor_by_login(&login).await?.is_some() {
             return Err(anyhow::anyhow!("mentor already exists: {}", login));
@@ -124,7 +124,7 @@ impl MentorStorage {
         status: MentorStatus,
     ) -> Result<mentor::Model, anyhow::Error> {
         let model = self.get_mentor_by_login(login).await?.ok_or_else(|| {
-            DbErr::RecordNotFound(format!("Mentor not found for github_login {}", login))
+            DbErr::RecordNotFound(format!("Mentor not found for login {}", login))
         })?;
 
         let mut active: mentor::ActiveModel = model.into();

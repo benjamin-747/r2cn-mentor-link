@@ -27,10 +27,10 @@ impl ScoreStorage {
         &self,
         year: i32,
         month: i32,
-        login: &str,
+        student_id: &str,
     ) -> Result<Option<monthly_score::Model>, anyhow::Error> {
         let record = monthly_score::Entity::find()
-            .filter(monthly_score::Column::GithubLogin.eq(login))
+            .filter(monthly_score::Column::StudentId.eq(student_id))
             .filter(monthly_score::Column::Year.eq(year))
             .filter(monthly_score::Column::Month.eq(month))
             .one(self.get_connection())
@@ -38,12 +38,12 @@ impl ScoreStorage {
         Ok(record)
     }
 
-    pub async fn get_latest_score_by_login(
+    pub async fn get_latest_score_by_student_id(
         &self,
-        login: &str,
+        student_id: &str,
     ) -> Result<Option<monthly_score::Model>, anyhow::Error> {
         let record = monthly_score::Entity::find()
-            .filter(monthly_score::Column::GithubLogin.eq(login))
+            .filter(monthly_score::Column::StudentId.eq(student_id))
             .order_by_desc(monthly_score::Column::Year)
             .order_by_desc(monthly_score::Column::Month)
             .one(self.get_connection())
@@ -90,7 +90,7 @@ impl ScoreStorage {
 
         let balance = last_month.score_balance();
         let current_month = self
-            .get_score(year, month, &last_month.github_login)
+            .get_score(year, month, &last_month.student_id)
             .await
             .unwrap();
         if let Some(current_month) = current_month {
@@ -101,7 +101,7 @@ impl ScoreStorage {
         } else if balance != 0 {
             let new_score = monthly_score::ActiveModel {
                 id: NotSet,
-                github_login: Set(last_month.github_login),
+                student_id: Set(last_month.student_id),
                 student_name: Set(last_month.student_name),
                 year: Set(now.year()),
                 month: Set(now.month() as i32),

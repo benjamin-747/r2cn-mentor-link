@@ -21,6 +21,8 @@ pub struct OsppValidateStudentRes {
 #[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ValidateStudent {
     pub login: String,
+    #[serde(default)]
+    pub scm_provider: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]

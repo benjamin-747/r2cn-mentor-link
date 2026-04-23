@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NewScore {
     pub score: i32,
-    pub github_login: String,
+    pub student_id: String,
     pub student_name: String,
     pub carryover_score: i32,
 }
@@ -15,7 +15,7 @@ impl From<NewScore> for monthly_score::ActiveModel {
     fn from(value: NewScore) -> Self {
         Self {
             id: NotSet,
-            github_login: Set(value.github_login),
+            student_id: Set(value.student_id),
             student_name: Set(value.student_name),
             year: Set(Utc::now().year()),
             month: Set(Utc::now().month() as i32),

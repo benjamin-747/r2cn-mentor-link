@@ -1,11 +1,7 @@
-mod confernece_router;
+mod application;
 mod email;
-mod email_route;
-mod mentor_router;
 mod model;
-mod score_router;
-mod student_router;
-mod task_router;
+mod routers;
 
 use std::env;
 
@@ -34,6 +30,9 @@ async fn start() -> anyhow::Result<()> {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
     let host = env::var("HOST").expect("HOST is not set in .env file");
     let port = env::var("PORT").expect("PORT is not set in .env file");
+    let send_email = env::var("SEND_EMAIL")
+        .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+        .unwrap_or(true);
     let server_url = format!("{host}:{port}");
     let conn = Database::connect(db_url)
         .await
@@ -41,15 +40,12 @@ async fn start() -> anyhow::Result<()> {
 
     Migrator::up(&conn, None).await.unwrap();
     let context = Context::new(conn.into()).await;
-    let state = AppState { context };
+    let state = AppState {
+        context,
+        send_email,
+    };
 
-    let api_router = Router::new()
-        .merge(confernece_router::routers())
-        .merge(task_router::routers())
-        .merge(student_router::routers())
-        .merge(score_router::routers())
-        .merge(mentor_router::routers())
-        .merge(email_route::routers());
+    let api_router = routers::build_api_router();
 
     let app = Router::new()
         .nest("/api/v1/", api_router)
@@ -66,6 +62,7 @@ async fn start() -> anyhow::Result<()> {
 #[derive(Clone)]
 struct AppState {
     context: Context,
+    send_email: bool,
 }
 
 impl AppState {
@@ -83,6 +80,10 @@ impl AppState {
 
     fn mentor_stg(&self) -> MentorStorage {
         self.context.services.mentor_stg.clone()
+    }
+
+    fn email_enabled(&self) -> bool {
+        self.send_email
     }
 }
 
