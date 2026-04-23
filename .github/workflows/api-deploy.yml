@@ -33,29 +33,30 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           REGISTRY_ALIAS: m8q5m4u3
-          REPOSITORY: r2cn/api
-          IMAGE_TAG: latest
+          REPOSITORY: openatom-internship/api
+          IMAGE_HASH_TAG: ${{ github.sha }}
         run: |
 
           IMAGE_BASE="$REGISTRY/$REGISTRY_ALIAS/$REPOSITORY"
 
           docker buildx build \
-          -t $IMAGE_BASE:$IMAGE_TAG \
+          -t $IMAGE_BASE:latest \
+          -t $IMAGE_BASE:$IMAGE_HASH_TAG \
           --push .
       - name: Wait for image to be available
         run: sleep 10
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            docker pull public.ecr.aws/m8q5m4u3/r2cn/api:latest &&
-            docker rm -f r2cn-api || true &&
-            docker run -it -d --name r2cn-api --network r2cn-network \
-            -p 8000:8000 --restart=always \
-            --env-file /home/deploy/.env \
-            public.ecr.aws/m8q5m4u3/r2cn/api:latest
+      # - name: Deploy via SSH
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ secrets.SSH_HOST }}
+      #     username: ${{ secrets.SSH_USER }}
+      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     port: ${{ secrets.SSH_PORT }}
+      #     script: |
+      #       docker pull public.ecr.aws/m8q5m4u3/r2cn/api:latest &&
+      #       docker rm -f r2cn-api || true &&
+      #       docker run -it -d --name r2cn-api --network r2cn-network \
+      #       -p 8000:8000 --restart=always \
+      #       --env-file /home/deploy/.env \
+      #       public.ecr.aws/m8q5m4u3/r2cn/api:latest

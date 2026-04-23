@@ -13,7 +13,7 @@ pub struct UpdateMentorStatusRequest {
 pub struct NewMentor {
     pub name: String,
     pub email: String,
-    pub github_login: String,
+    pub login: String,
     pub status: String,
 }
 
@@ -23,7 +23,7 @@ impl From<NewMentor> for mentor::ActiveModel {
             id: NotSet,
             name: Set(value.name),
             email: Set(value.email),
-            github_login: Set(value.github_login),
+            login: Set(value.login),
             status: Set(value.status),
             created_at: Set(chrono::Utc::now().naive_utc()),
             updated_at: Set(chrono::Utc::now().naive_utc()),

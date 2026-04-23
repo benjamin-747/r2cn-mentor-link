@@ -6,13 +6,14 @@ use anyhow::{Context, Error};
 use axum::extract::State;
 use chrono::{Datelike, NaiveDate};
 use entity::sea_orm_active_enums::TaskStatus;
-use entity::{student, task};
+use entity::task;
 use lettre::message::{Attachment, Body, MultiPart, SinglePart, header};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use serde_json::json;
 use service::model::score::ScoreDto;
 use service::storage::mentor_stg::{MentorRes, MentorStatus};
+use service::storage::student_stg::StudentProfile;
 use tera::Tera;
 
 use crate::AppState;
@@ -262,6 +263,10 @@ impl EmailSender {
     }
 
     pub async fn notice_all_email(state: State<AppState>, template_id: &str) -> Result<(), Error> {
+        if !state.email_enabled() {
+            tracing::info!("Email sending disabled by SEND_EMAIL, skip notice_all_email");
+            return Ok(());
+        }
         let active_mentor_emails: Vec<String> = state
             .mentor_stg()
             .get_active_mentors()
@@ -294,17 +299,21 @@ impl EmailSender {
     }
 
     pub async fn failed_email(state: State<AppState>, task: task::Model) {
-        if let Some(student_github_login) = &task.student_github_login {
+        if !state.email_enabled() {
+            tracing::info!("Email sending disabled by SEND_EMAIL, skip failed_email");
+            return;
+        }
+        if let Some(student_id) = &task.student_id {
             let student = state
                 .student_stg()
-                .get_student_by_login(student_github_login)
+                .get_student_by_student_id(student_id)
                 .await
                 .unwrap();
 
-            let mentor_github_login = &task.mentor_github_login;
+            let mentor_login = &task.mentor_login;
             let cc_email: Vec<String> = state
                 .mentor_stg()
-                .get_mentor_by_login(mentor_github_login)
+                .get_mentor_by_login(mentor_login)
                 .await
                 .unwrap()
                 .map(|model| model.into())
@@ -316,9 +325,9 @@ impl EmailSender {
             if let Some(student) = student {
                 let mut email_context = tera::Context::new();
                 email_context.insert("student_name", &student.student_name);
-                email_context.insert("task_title", &task.github_issue_title);
-                email_context.insert("task_link", &task.github_issue_link);
-                email_context.insert("mentor_name", &task.mentor_github_login);
+                email_context.insert("task_title", &task.issue_title);
+                email_context.insert("task_link", &task.issue_link);
+                email_context.insert("mentor_name", &task.mentor_login);
                 email_context.insert("project_link", &util::project_link(&task));
 
                 let sender = EmailSender::from_local_template(
@@ -334,18 +343,22 @@ impl EmailSender {
     }
 
     pub async fn assigned_email(state: State<AppState>, task: task::Model) {
-        if let Some(student_github_login) = &task.student_github_login {
+        if !state.email_enabled() {
+            tracing::info!("Email sending disabled by SEND_EMAIL, skip assigned_email");
+            return;
+        }
+        if let Some(student_id) = &task.student_id {
             let student = state
                 .student_stg()
-                .get_student_by_login(student_github_login)
+                .get_student_by_student_id(student_id)
                 .await
                 .unwrap()
                 .unwrap();
 
-            let mentor_github_login = &task.mentor_github_login;
+            let mentor_login = &task.mentor_login;
             let cc_email: Vec<String> = state
                 .mentor_stg()
-                .get_mentor_by_login(mentor_github_login)
+                .get_mentor_by_login(mentor_login)
                 .await
                 .unwrap()
                 .map(|model| model.into())
@@ -356,9 +369,9 @@ impl EmailSender {
 
             let mut email_context = tera::Context::new();
             email_context.insert("student_name", &student.student_name);
-            email_context.insert("task_title", &task.github_issue_title);
-            email_context.insert("task_link", &task.github_issue_link);
-            email_context.insert("mentor_name", &task.mentor_github_login);
+            email_context.insert("task_title", &task.issue_title);
+            email_context.insert("task_link", &task.issue_link);
+            email_context.insert("mentor_name", &task.mentor_login);
             email_context.insert("project_link", &util::project_link(&task));
             let sender = EmailSender::from_local_template(
                 "task_assigned.mjml",
@@ -372,17 +385,21 @@ impl EmailSender {
     }
 
     pub async fn complete_email(state: State<AppState>, task: task::Model, balance: i32) {
-        if let Some(student_github_login) = &task.student_github_login {
+        if !state.email_enabled() {
+            tracing::info!("Email sending disabled by SEND_EMAIL, skip complete_email");
+            return;
+        }
+        if let Some(student_id) = &task.student_id {
             let student = state
                 .student_stg()
-                .get_student_by_login(student_github_login)
+                .get_student_by_student_id(student_id)
                 .await
                 .unwrap();
 
-            let mentor_github_login = &task.mentor_github_login;
+            let mentor_login = &task.mentor_login;
             let cc_email: Vec<String> = state
                 .mentor_stg()
-                .get_mentor_by_login(mentor_github_login)
+                .get_mentor_by_login(mentor_login)
                 .await
                 .unwrap()
                 .map(|model| model.into())
@@ -394,9 +411,9 @@ impl EmailSender {
             if let Some(student) = student {
                 let mut email_context = tera::Context::new();
                 email_context.insert("student_name", &student.student_name);
-                email_context.insert("task_title", &task.github_issue_title);
-                email_context.insert("task_link", &task.github_issue_link);
-                email_context.insert("mentor_name", &task.mentor_github_login);
+                email_context.insert("task_title", &task.issue_title);
+                email_context.insert("task_link", &task.issue_link);
+                email_context.insert("mentor_name", &task.mentor_login);
                 email_context.insert("points_total", &balance);
                 email_context.insert("project_link", &util::project_link(&task));
                 let sender = EmailSender::from_local_template(
@@ -413,9 +430,13 @@ impl EmailSender {
 
     pub async fn monthly_score_email(
         state: State<AppState>,
-        student: Option<student::Model>,
+        student: Option<StudentProfile>,
         last_month: ScoreDto,
     ) {
+        if !state.email_enabled() {
+            tracing::info!("Email sending disabled by SEND_EMAIL, skip monthly_score_email");
+            return;
+        }
         if let Some(student) = student {
             let mut email_context = tera::Context::new();
             email_context.insert("student_name", &student.student_name);
@@ -426,7 +447,7 @@ impl EmailSender {
             let finished_tasks_last_month = state
                 .task_stg()
                 .get_student_tasks_with_status_in_month(
-                    &student.github_login,
+                    &student.student_id,
                     TaskStatus::finish_task_status(),
                     last_month.year,
                     last_month.month,
@@ -436,7 +457,7 @@ impl EmailSender {
 
             let mentor_logins = finished_tasks_last_month
                 .iter()
-                .map(|t| t.mentor_github_login.clone())
+                .map(|t| t.mentor_login.clone())
                 .filter(|login| !login.is_empty())
                 .collect::<HashSet<_>>()
                 .into_iter()
