@@ -45,6 +45,8 @@ pub enum Relation {
     OpenSourceProjectMaintainer,
     #[sea_orm(has_one = "super::openatom_mentor::Entity")]
     OpenatomMentor,
+    #[sea_orm(has_one = "super::openatom_notification_preference::Entity")]
+    OpenatomNotificationPreference,
     #[sea_orm(has_many = "super::openatom_review_log::Entity")]
     OpenatomReviewLog,
     #[sea_orm(has_many = "super::openatom_student::Entity")]
@@ -84,6 +86,12 @@ impl Related<super::open_source_project_maintainer::Entity> for Entity {
 impl Related<super::openatom_mentor::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OpenatomMentor.def()
+    }
+}
+
+impl Related<super::openatom_notification_preference::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OpenatomNotificationPreference.def()
     }
 }
 

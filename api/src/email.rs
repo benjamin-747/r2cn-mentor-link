@@ -5,14 +5,15 @@ use std::{env, fs, vec};
 use anyhow::{Context, Error};
 use axum::extract::State;
 use chrono::{Datelike, NaiveDate};
+use entity::openatom_notification_preference;
 use entity::sea_orm_active_enums::TaskStatus;
 use entity::task;
 use lettre::message::{Attachment, Body, MultiPart, SinglePart, header};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde_json::json;
 use service::model::score::ScoreDto;
-use service::storage::mentor_stg::{MentorRes, MentorStatus};
 use service::storage::student_stg::StudentProfile;
 use tera::Tera;
 
@@ -21,6 +22,55 @@ use crate::AppState;
 enum Lang {
     Zh,
     En,
+}
+
+#[derive(Copy, Clone)]
+enum NotificationKind {
+    MonthlyPointsReport,
+    TaskApplicationNotice,
+    TaskApplicationSuccess,
+    TaskCompletionReport,
+    MentorTaskCreated,
+    TaskFailed,
+    SystemAnnouncement,
+}
+
+fn is_preference_enabled(
+    preference: &openatom_notification_preference::Model,
+    kind: NotificationKind,
+) -> bool {
+    match kind {
+        NotificationKind::MonthlyPointsReport => preference.monthly_points_report,
+        NotificationKind::TaskApplicationNotice => preference.task_application_notice,
+        NotificationKind::TaskApplicationSuccess => preference.task_application_success,
+        NotificationKind::TaskCompletionReport => preference.task_completion_report,
+        NotificationKind::MentorTaskCreated => preference.mentor_task_created,
+        NotificationKind::TaskFailed => preference.task_failed,
+        NotificationKind::SystemAnnouncement => preference.system_announcement,
+    }
+}
+
+async fn is_notification_enabled(state: &AppState, user_id: &str, kind: NotificationKind) -> bool {
+    if !state.email_enabled() {
+        return false;
+    }
+
+    match openatom_notification_preference::Entity::find()
+        .filter(openatom_notification_preference::Column::UserId.eq(user_id))
+        .one(state.context.services.student_stg.get_connection())
+        .await
+    {
+        Ok(Some(preference)) => is_preference_enabled(&preference, kind),
+        Ok(None) => true,
+        Err(err) => {
+            tracing::warn!(
+                "Failed to read notification preference for {}: {}",
+                user_id,
+                err
+            );
+            true
+        }
+    }
 }
 
 fn month_name(date: NaiveDate, lang: Lang) -> String {
@@ -65,6 +115,12 @@ pub fn cid_images_for_template(template_name: &str) -> Vec<(&'static str, &'stat
 
     match template_name {
         "task_assigned.mjml" => {
+            imgs.push(("templates/image/task_assigned.png", "task_status"));
+        }
+        "task_created_mentor.mjml" => {
+            imgs.push(("templates/image/task_assigned.png", "task_status"));
+        }
+        "task_apply_mentor.mjml" => {
             imgs.push(("templates/image/task_assigned.png", "task_status"));
         }
         "task_failed.mjml" => {
@@ -267,23 +323,33 @@ impl EmailSender {
             tracing::info!("Email sending disabled by SEND_EMAIL, skip notice_all_email");
             return Ok(());
         }
-        let active_mentor_emails: Vec<String> = state
-            .mentor_stg()
-            .get_active_mentors()
+        let active_mentors = state.mentor_stg().get_approved_mentors().await.unwrap();
+        let mut active_mentor_emails = Vec::new();
+        for mentor in active_mentors {
+            if is_notification_enabled(
+                &state,
+                &mentor.user_id,
+                NotificationKind::SystemAnnouncement,
+            )
             .await
-            .unwrap()
-            .iter()
-            .map(|model| model.email.clone())
-            .collect();
+            {
+                active_mentor_emails.push(mentor.email);
+            }
+        }
 
-        let active_student_emails: Vec<String> = state
-            .student_stg()
-            .get_active_students()
+        let active_students = state.student_stg().get_active_students().await.unwrap();
+        let mut active_student_emails = Vec::new();
+        for student in active_students {
+            if is_notification_enabled(
+                &state,
+                &student.user_id,
+                NotificationKind::SystemAnnouncement,
+            )
             .await
-            .unwrap()
-            .iter()
-            .map(|m| m.email.clone())
-            .collect();
+            {
+                active_student_emails.push(student.email);
+            }
+        }
         let mut sending_emails = HashSet::new();
         sending_emails.extend(active_mentor_emails);
         sending_emails.extend(active_student_emails);
@@ -299,10 +365,6 @@ impl EmailSender {
     }
 
     pub async fn failed_email(state: State<AppState>, task: task::Model) {
-        if !state.email_enabled() {
-            tracing::info!("Email sending disabled by SEND_EMAIL, skip failed_email");
-            return;
-        }
         if let Some(student_id) = &task.student_id {
             let student = state
                 .student_stg()
@@ -311,23 +373,35 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_login = &task.mentor_login;
-            let cc_email: Vec<String> = state
+            let mentor = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_login)
                 .await
-                .unwrap()
-                .map(|model| model.into())
-                .filter(|mentor: &MentorRes| mentor.status == MentorStatus::Active)
-                .map(|mentor| mentor.email)
-                .into_iter()
-                .collect();
+                .unwrap();
+            let mentor_name = mentor
+                .as_ref()
+                .map(|m| m.login.clone())
+                .unwrap_or_else(|| mentor_login.to_string());
+            let mut cc_email = Vec::new();
+            if let Some(mentor) = mentor
+                && is_notification_enabled(&state, &mentor.user_id, NotificationKind::TaskFailed)
+                    .await
+            {
+                cc_email.push(mentor.email);
+            }
 
             if let Some(student) = student {
+                if !is_notification_enabled(&state, &student.user_id, NotificationKind::TaskFailed)
+                    .await
+                {
+                    tracing::info!("Skip failed_email by user preference: {}", student.user_id);
+                    return;
+                }
                 let mut email_context = tera::Context::new();
                 email_context.insert("student_name", &student.student_name);
                 email_context.insert("task_title", &task.issue_title);
                 email_context.insert("task_link", &task.issue_link);
-                email_context.insert("mentor_name", &task.mentor_login);
+                email_context.insert("mentor_name", &mentor_name);
                 email_context.insert("project_link", &util::project_link(&task));
 
                 let sender = EmailSender::from_local_template(
@@ -343,10 +417,6 @@ impl EmailSender {
     }
 
     pub async fn assigned_email(state: State<AppState>, task: task::Model) {
-        if !state.email_enabled() {
-            tracing::info!("Email sending disabled by SEND_EMAIL, skip assigned_email");
-            return;
-        }
         if let Some(student_id) = &task.student_id {
             let student = state
                 .student_stg()
@@ -356,22 +426,45 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_login = &task.mentor_login;
-            let cc_email: Vec<String> = state
+            let mentor = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_login)
                 .await
-                .unwrap()
-                .map(|model| model.into())
-                .filter(|mentor: &MentorRes| mentor.status == MentorStatus::Active)
-                .map(|mentor| mentor.email)
-                .into_iter()
-                .collect();
+                .unwrap();
+            let mentor_name = mentor
+                .as_ref()
+                .map(|m| m.login.clone())
+                .unwrap_or_else(|| mentor_login.to_string());
+            let mut cc_email = Vec::new();
+            if let Some(mentor) = mentor
+                && is_notification_enabled(
+                    &state,
+                    &mentor.user_id,
+                    NotificationKind::TaskApplicationSuccess,
+                )
+                .await
+            {
+                cc_email.push(mentor.email);
+            }
 
+            if !is_notification_enabled(
+                &state,
+                &student.user_id,
+                NotificationKind::TaskApplicationSuccess,
+            )
+            .await
+            {
+                tracing::info!(
+                    "Skip assigned_email by user preference: {}",
+                    student.user_id
+                );
+                return;
+            }
             let mut email_context = tera::Context::new();
             email_context.insert("student_name", &student.student_name);
             email_context.insert("task_title", &task.issue_title);
             email_context.insert("task_link", &task.issue_link);
-            email_context.insert("mentor_name", &task.mentor_login);
+            email_context.insert("mentor_name", &mentor_name);
             email_context.insert("project_link", &util::project_link(&task));
             let sender = EmailSender::from_local_template(
                 "task_assigned.mjml",
@@ -385,10 +478,6 @@ impl EmailSender {
     }
 
     pub async fn complete_email(state: State<AppState>, task: task::Model, balance: i32) {
-        if !state.email_enabled() {
-            tracing::info!("Email sending disabled by SEND_EMAIL, skip complete_email");
-            return;
-        }
         if let Some(student_id) = &task.student_id {
             let student = state
                 .student_stg()
@@ -397,23 +486,46 @@ impl EmailSender {
                 .unwrap();
 
             let mentor_login = &task.mentor_login;
-            let cc_email: Vec<String> = state
+            let mentor = state
                 .mentor_stg()
                 .get_mentor_by_login(mentor_login)
                 .await
-                .unwrap()
-                .map(|model| model.into())
-                .filter(|mentor: &MentorRes| mentor.status == MentorStatus::Active)
-                .map(|mentor| mentor.email)
-                .into_iter()
-                .collect();
+                .unwrap();
+            let mentor_name = mentor
+                .as_ref()
+                .map(|m| m.login.clone())
+                .unwrap_or_else(|| mentor_login.to_string());
+            let mut cc_email = Vec::new();
+            if let Some(mentor) = mentor
+                && is_notification_enabled(
+                    &state,
+                    &mentor.user_id,
+                    NotificationKind::TaskCompletionReport,
+                )
+                .await
+            {
+                cc_email.push(mentor.email);
+            }
 
             if let Some(student) = student {
+                if !is_notification_enabled(
+                    &state,
+                    &student.user_id,
+                    NotificationKind::TaskCompletionReport,
+                )
+                .await
+                {
+                    tracing::info!(
+                        "Skip complete_email by user preference: {}",
+                        student.user_id
+                    );
+                    return;
+                }
                 let mut email_context = tera::Context::new();
                 email_context.insert("student_name", &student.student_name);
                 email_context.insert("task_title", &task.issue_title);
                 email_context.insert("task_link", &task.issue_link);
-                email_context.insert("mentor_name", &task.mentor_login);
+                email_context.insert("mentor_name", &mentor_name);
                 email_context.insert("points_total", &balance);
                 email_context.insert("project_link", &util::project_link(&task));
                 let sender = EmailSender::from_local_template(
@@ -433,11 +545,20 @@ impl EmailSender {
         student: Option<StudentProfile>,
         last_month: ScoreDto,
     ) {
-        if !state.email_enabled() {
-            tracing::info!("Email sending disabled by SEND_EMAIL, skip monthly_score_email");
-            return;
-        }
         if let Some(student) = student {
+            if !is_notification_enabled(
+                &state,
+                &student.user_id,
+                NotificationKind::MonthlyPointsReport,
+            )
+            .await
+            {
+                tracing::info!(
+                    "Skip monthly_score_email by user preference: {}",
+                    student.user_id
+                );
+                return;
+            }
             let mut email_context = tera::Context::new();
             email_context.insert("student_name", &student.student_name);
             email_context.insert("points_earned_month", &last_month.new_score);
@@ -469,11 +590,18 @@ impl EmailSender {
                 .await
                 .unwrap();
 
-            let active_mentor_emails: Vec<String> = mentors
-                .iter()
-                .filter(|model| model.status == "active")
-                .map(|model| model.email.clone())
-                .collect();
+            let mut active_mentor_emails = Vec::new();
+            for mentor in mentors {
+                if is_notification_enabled(
+                    &state,
+                    &mentor.user_id,
+                    NotificationKind::MonthlyPointsReport,
+                )
+                .await
+                {
+                    active_mentor_emails.push(mentor.email);
+                }
+            }
 
             let date =
                 NaiveDate::from_ymd_opt(last_month.year, last_month.month as u32, 1).unwrap();
@@ -489,6 +617,85 @@ impl EmailSender {
                 email_context,
                 &student.email,
                 active_mentor_emails,
+            );
+            sender.send().await.unwrap();
+        }
+    }
+
+    pub async fn task_created_mentor_email(state: State<AppState>, task: task::Model) {
+        let mentor = state
+            .mentor_stg()
+            .get_mentor_by_login(&task.mentor_login)
+            .await
+            .unwrap();
+
+        if let Some(mentor) = mentor {
+            if !is_notification_enabled(
+                &state,
+                &mentor.user_id,
+                NotificationKind::MentorTaskCreated,
+            )
+            .await
+            {
+                tracing::info!(
+                    "Skip task_created_mentor_email by user preference: {}",
+                    mentor.user_id
+                );
+                return;
+            }
+            let mut email_context = tera::Context::new();
+            email_context.insert("mentor_name", &mentor.name);
+            email_context.insert("task_title", &task.issue_title);
+            email_context.insert("task_link", &task.issue_link);
+            email_context.insert("project_link", &util::project_link(&task));
+            let sender = EmailSender::from_local_template(
+                "task_created_mentor.mjml",
+                "R2CN任务创建成功通知/R2CN Task Created",
+                email_context,
+                &mentor.email,
+                vec![],
+            );
+            sender.send().await.unwrap();
+        }
+    }
+
+    pub async fn task_apply_mentor_email(
+        state: State<AppState>,
+        task: task::Model,
+        student_login: String,
+    ) {
+        let mentor = state
+            .mentor_stg()
+            .get_mentor_by_login(&task.mentor_login)
+            .await
+            .unwrap();
+
+        if let Some(mentor) = mentor {
+            if !is_notification_enabled(
+                &state,
+                &mentor.user_id,
+                NotificationKind::TaskApplicationNotice,
+            )
+            .await
+            {
+                tracing::info!(
+                    "Skip task_apply_mentor_email by user preference: {}",
+                    mentor.user_id
+                );
+                return;
+            }
+            let mut email_context = tera::Context::new();
+            email_context.insert("mentor_name", &mentor.name);
+            email_context.insert("student_login", &student_login);
+            email_context.insert("task_title", &task.issue_title);
+            email_context.insert("task_link", &task.issue_link);
+            email_context.insert("project_link", &util::project_link(&task));
+            let sender = EmailSender::from_local_template(
+                "task_apply_mentor.mjml",
+                "R2CN学生申请任务通知/R2CN Student Application",
+                email_context,
+                &mentor.email,
+                vec![],
             );
             sender.send().await.unwrap();
         }

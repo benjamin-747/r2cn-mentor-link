@@ -1,61 +1,19 @@
 use std::sync::Arc;
 
 use chrono::NaiveDateTime;
-use entity::mentor;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
-};
+use entity::{account, openatom_mentor, user};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
-pub enum MentorStatus {
-    Active,
-    #[default]
-    Inactive,
-}
-
-impl From<String> for MentorStatus {
-    fn from(s: String) -> Self {
-        match s.to_lowercase().as_str() {
-            "active" => MentorStatus::Active,
-            "inactive" => MentorStatus::Inactive,
-            _ => MentorStatus::Inactive, // default
-        }
-    }
-}
-
-impl From<MentorStatus> for String {
-    fn from(v: MentorStatus) -> Self {
-        match v {
-            MentorStatus::Active => "active".to_string(),
-            MentorStatus::Inactive => "inactive".to_string(),
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MentorRes {
-    pub id: i32,
+    pub id: String,
+    pub user_id: String,
     pub name: String,
     pub email: String,
     pub login: String,
-    pub status: MentorStatus,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-}
-
-impl From<mentor::Model> for MentorRes {
-    fn from(value: mentor::Model) -> Self {
-        MentorRes {
-            id: value.id,
-            name: value.name,
-            email: value.email,
-            login: value.login,
-            status: MentorStatus::from(value.status),
-            created_at: value.created_at,
-            updated_at: value.updated_at,
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -72,65 +30,79 @@ impl MentorStorage {
         MentorStorage { connection }
     }
 
-    pub async fn get_active_mentors(&self) -> Result<Vec<mentor::Model>, anyhow::Error> {
-        let record = mentor::Entity::find()
-            .filter(mentor::Column::Status.eq("active"))
+    pub async fn get_approved_mentors(&self) -> Result<Vec<MentorRes>, anyhow::Error> {
+        let records = openatom_mentor::Entity::find()
+            .filter(openatom_mentor::Column::MentorStatus.eq("approved"))
             .all(self.get_connection())
             .await?;
-        Ok(record)
+        let mut result = Vec::with_capacity(records.len());
+        for record in records {
+            if let Some(profile) = self.resolve_mentor_profile(record).await? {
+                result.push(profile);
+            }
+        }
+        Ok(result)
     }
 
     pub async fn get_mentor_by_login(
         &self,
         login: &str,
-    ) -> Result<Option<mentor::Model>, anyhow::Error> {
-        let record = mentor::Entity::find()
-            .filter(mentor::Column::Login.eq(login))
+    ) -> Result<Option<MentorRes>, anyhow::Error> {
+        let account = account::Entity::find()
+            .filter(account::Column::Login.eq(login))
             .one(self.get_connection())
             .await?;
-        Ok(record)
+        let Some(account) = account else {
+            return Ok(None);
+        };
+        let mentor = openatom_mentor::Entity::find()
+            .filter(openatom_mentor::Column::UserId.eq(account.user_id))
+            .one(self.get_connection())
+            .await?;
+        let Some(mentor) = mentor else {
+            return Ok(None);
+        };
+        self.resolve_mentor_profile(mentor).await
     }
 
     pub async fn get_mentors_by_logins(
         &self,
         logins: Vec<String>,
-    ) -> Result<Vec<mentor::Model>, anyhow::Error> {
-        let mentors = mentor::Entity::find()
-            .filter(mentor::Column::Login.is_in(logins))
-            .all(self.get_connection())
-            .await?;
-
+    ) -> Result<Vec<MentorRes>, anyhow::Error> {
+        let mut mentors = Vec::new();
+        for login in logins {
+            if let Some(mentor) = self.get_mentor_by_login(&login).await? {
+                mentors.push(mentor);
+            }
+        }
         Ok(mentors)
     }
 
-    pub async fn new_mentor(
+    async fn resolve_mentor_profile(
         &self,
-        active_model: mentor::ActiveModel,
-    ) -> Result<mentor::Model, anyhow::Error> {
-        let login = active_model.login.clone().unwrap();
+        mentor: openatom_mentor::Model,
+    ) -> Result<Option<MentorRes>, anyhow::Error> {
+        let user = user::Entity::find_by_id(mentor.user_id.clone())
+            .one(self.get_connection())
+            .await?;
+        let Some(user) = user else {
+            return Ok(None);
+        };
+        let account = account::Entity::find()
+            .filter(account::Column::UserId.eq(mentor.user_id))
+            .one(self.get_connection())
+            .await?;
+        let login = account.and_then(|a| a.login).unwrap_or_default();
+        let name = user.name.unwrap_or_else(|| login.clone());
 
-        if self.get_mentor_by_login(&login).await?.is_some() {
-            return Err(anyhow::anyhow!("mentor already exists: {}", login));
-        }
-
-        let mentor = active_model.insert(self.get_connection()).await?;
-
-        Ok(mentor)
-    }
-
-    pub async fn change_mentor_status(
-        &self,
-        login: &str,
-        status: MentorStatus,
-    ) -> Result<mentor::Model, anyhow::Error> {
-        let model = self.get_mentor_by_login(login).await?.ok_or_else(|| {
-            DbErr::RecordNotFound(format!("Mentor not found for login {}", login))
-        })?;
-
-        let mut active: mentor::ActiveModel = model.into();
-        active.status = Set(status.into());
-
-        let updated = active.update(self.get_connection()).await?;
-        Ok(updated)
+        Ok(Some(MentorRes {
+            id: mentor.id,
+            user_id: user.id,
+            name,
+            email: user.email,
+            login,
+            created_at: mentor.created_at,
+            updated_at: mentor.updated_at,
+        }))
     }
 }

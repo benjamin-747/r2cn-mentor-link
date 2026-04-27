@@ -1,11 +1,52 @@
 use anyhow::{Result, anyhow};
 use axum::extract::State;
 use chrono::{Datelike, Utc};
-use entity::{monthly_score, sea_orm_active_enums::TaskStatus, task};
-use sea_orm::{Set, TryIntoModel};
+use entity::{monthly_score, open_source_internship, sea_orm_active_enums::TaskStatus, task};
+use sea_orm::{EntityTrait, QueryOrder, Set, TryIntoModel};
 use service::model::score::ScoreDto;
 
-use crate::{AppState, email::EmailSender, model::score::NewScore};
+use crate::{
+    AppState,
+    email::EmailSender,
+    model::{
+        score::NewScore,
+        task::{NewTask, Task},
+    },
+};
+
+const BUDGET_EXCEEDED_CODE: &str = "BUDGET_EXCEEDED";
+
+async fn validate_budget_limit(
+    state: &AppState,
+    new_total_score: i64,
+) -> Result<(), anyhow::Error> {
+    let config = open_source_internship::Entity::find()
+        .order_by_desc(open_source_internship::Column::UpdatedAt)
+        .one(state.task_stg().get_connection())
+        .await?
+        .ok_or_else(|| anyhow!("OPEN_SOURCE_INTERNSHIP_NOT_FOUND"))?;
+
+    let projected_budget = new_total_score * i64::from(config.points_per_cny);
+    if projected_budget > i64::from(config.total_budget_cny) {
+        return Err(anyhow!(
+            "{}: projected={} exceeds total_budget_cny={}",
+            BUDGET_EXCEEDED_CODE,
+            projected_budget,
+            config.total_budget_cny
+        ));
+    }
+    Ok(())
+}
+
+pub async fn new_task(state: &AppState, payload: NewTask) -> Result<Task> {
+    let current_total_score = state.task_stg().sum_all_task_score().await?;
+    let projected_total_score = current_total_score + i64::from(payload.score);
+    validate_budget_limit(state, projected_total_score).await?;
+
+    let active_model = payload.into();
+    let model = state.task_stg().new_task(active_model).await?;
+    Ok(model.into())
+}
 
 pub async fn update_task_score(
     state: &AppState,
@@ -13,6 +54,15 @@ pub async fn update_task_score(
     issue_title: String,
     score: i32,
 ) -> Result<bool> {
+    let task = state
+        .task_stg()
+        .search_task_with_issue_id(issue_id)
+        .await?
+        .ok_or(anyhow!("Task not found for issue_id {}", issue_id))?;
+    let current_total_score = state.task_stg().sum_all_task_score().await?;
+    let projected_total_score = current_total_score - i64::from(task.score) + i64::from(score);
+    validate_budget_limit(state, projected_total_score).await?;
+
     state
         .task_stg()
         .update_score(issue_id, issue_title, score)
