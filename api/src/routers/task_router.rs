@@ -9,8 +9,11 @@ use entity::task as task_entity;
 use crate::{
     AppState,
     application::task,
+    email::EmailSender,
     model::task::{CommandRequest, NewTask, SearchTask, Task, UpdateScoreRequest},
 };
+
+const BUDGET_EXCEEDED_CODE: &str = "BUDGET_EXCEEDED";
 
 pub fn routers() -> Router<AppState> {
     Router::new().nest(
@@ -52,10 +55,27 @@ async fn new_task(
     state: State<AppState>,
     Json(json): Json<NewTask>,
 ) -> Result<Json<CommonResult<Task>>, CommonError> {
-    let active_model = json.into();
-    let res = state.task_stg().new_task(active_model).await.unwrap();
-    let res = build_task_response(&state, res).await?;
-    Ok(Json(CommonResult::success(Some(res))))
+    let res = task::new_task(&state, json).await;
+    let res = match res {
+        Ok(task_data) => {
+            if let Ok(Some(model)) = task::get_task_by_issue_id(&state, task_data.issue_id).await {
+                let moved_state = state.clone();
+                tokio::spawn(async move {
+                    EmailSender::task_created_mentor_email(moved_state, model).await
+                });
+            }
+            CommonResult::success(Some(task_data))
+        }
+        Err(err) => {
+            let msg = err.to_string();
+            if msg.contains(BUDGET_EXCEEDED_CODE) {
+                CommonResult::failed_with_code(BUDGET_EXCEEDED_CODE, &msg)
+            } else {
+                CommonResult::failed(&msg)
+            }
+        }
+    };
+    Ok(Json(res))
 }
 
 async fn update_task_score(
@@ -65,7 +85,14 @@ async fn update_task_score(
     let res = task::update_task_score(&state, json.issue_id, json.issue_title, json.score).await;
     let res = match res {
         Ok(_) => CommonResult::success(Some(true)),
-        Err(err) => CommonResult::failed(&err.to_string()),
+        Err(err) => {
+            let msg = err.to_string();
+            if msg.contains(BUDGET_EXCEEDED_CODE) {
+                CommonResult::failed_with_code(BUDGET_EXCEEDED_CODE, &msg)
+            } else {
+                CommonResult::failed(&msg)
+            }
+        }
     };
     Ok(Json(res))
 }
@@ -107,6 +134,7 @@ async fn request_assign(
     state: State<AppState>,
     Json(json): Json<CommandRequest>,
 ) -> Result<Json<CommonResult<bool>>, CommonError> {
+    let student_login = json.student_login.clone();
     let student_id = if let Some(student_id) = json.student_id {
         student_id
     } else if let Some(student_login) = json.student_login {
@@ -125,7 +153,29 @@ async fn request_assign(
     let res = task::request_assign(&state, json.issue_id, student_id).await;
 
     let res = match res {
-        Ok(_) => CommonResult::success(Some(true)),
+        Ok(_) => {
+            if let Ok(Some(task_model)) = task::get_task_by_issue_id(&state, json.issue_id).await {
+                let moved_state = state.clone();
+                let moved_task = task_model.clone();
+                let login = if let Some(login) = student_login {
+                    login
+                } else {
+                    moved_state
+                        .student_stg()
+                        .get_student_login_by_student_id(
+                            moved_task.student_id.as_deref().unwrap_or_default(),
+                        )
+                        .await
+                        .ok()
+                        .flatten()
+                        .unwrap_or_default()
+                };
+                tokio::spawn(async move {
+                    EmailSender::task_apply_mentor_email(moved_state, moved_task, login).await
+                });
+            }
+            CommonResult::success(Some(true))
+        }
         Err(err) => CommonResult::failed(&err.to_string()),
     };
     Ok(Json(res))

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct StudentProfile {
     pub student_id: String,
+    pub user_id: String,
     pub account_id: Option<String>,
     pub student_name: String,
     pub email: String,
@@ -40,8 +41,9 @@ impl StudentStorage {
             if let Some(user) = user {
                 result.push(StudentProfile {
                     student_id: student.id,
+                    user_id: user.id.clone(),
                     account_id: self.lookup_account_id(&user.id).await?,
-                    student_name: user.name.unwrap_or_default(),
+                    student_name: student.full_name.clone().or(user.name).unwrap_or_default(),
                     email: user.email,
                     contract_end_date: student.contract_end_at.map(|dt| dt.date()),
                 });
@@ -64,8 +66,9 @@ impl StudentStorage {
             if let Some(user) = user {
                 return Ok(Some(StudentProfile {
                     student_id: student.id,
+                    user_id: user.id.clone(),
                     account_id: self.lookup_account_id(&user.id).await?,
-                    student_name: user.name.unwrap_or_default(),
+                    student_name: student.full_name.or(user.name).unwrap_or_default(),
                     email: user.email,
                     contract_end_date: student.contract_end_at.map(|dt| dt.date()),
                 }));

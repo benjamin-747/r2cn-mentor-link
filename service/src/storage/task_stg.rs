@@ -60,6 +60,11 @@ impl TaskStorage {
         Ok(task)
     }
 
+    pub async fn sum_all_task_score(&self) -> Result<i64, anyhow::Error> {
+        let tasks = task::Entity::find().all(self.get_connection()).await?;
+        Ok(tasks.into_iter().map(|t| i64::from(t.score)).sum())
+    }
+
     pub async fn search_finished_task_with_date(
         &self,
         finish_year: i32,

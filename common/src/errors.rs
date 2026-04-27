@@ -21,10 +21,10 @@ pub enum CommonError {
 
 impl IntoResponse for CommonError {
     fn into_response(self) -> Response {
-        let (status, message) = match self {
+        let (status, code, message) = match self {
             CommonError::Deny(err) => {
                 // This error is caused by bad user input so don't log it
-                (StatusCode::UNAUTHORIZED, err)
+                (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", err)
             }
             CommonError::NotFound(err) => {
                 // Because `TraceLayer` wraps each request in a span that contains the request
@@ -32,16 +32,21 @@ impl IntoResponse for CommonError {
                 // tracing::error!(%err, "error");
 
                 // Don't expose any details about the error to the client
-                (StatusCode::NOT_FOUND, err)
+                (StatusCode::NOT_FOUND, "NOT_FOUND", err)
             }
-            CommonError::InvalidInput(err) => (StatusCode::BAD_REQUEST, err),
+            CommonError::InvalidInput(err) => (StatusCode::BAD_REQUEST, "INVALID_INPUT", err),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
                 "Something went wrong".to_owned(),
             ),
         };
 
-        (status, Json(CommonResult::<String>::failed(&message))).into_response()
+        (
+            status,
+            Json(CommonResult::<String>::failed_with_code(code, &message)),
+        )
+            .into_response()
     }
 }
 

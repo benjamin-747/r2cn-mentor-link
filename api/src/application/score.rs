@@ -5,10 +5,10 @@ use axum::extract::State;
 use chrono::{Datelike, Utc};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use rust_xlsxwriter::Workbook;
-use sea_orm::{Set, TryIntoModel};
+use sea_orm::{EntityTrait, QueryOrder, Set, TryIntoModel};
 
 use common::date::get_last_month;
-use entity::monthly_score;
+use entity::{monthly_score, open_source_internship};
 use service::model::score::{CommonScore, ScoreDto, load_score_strategy};
 
 use crate::{AppState, email::EmailSender, model::score::ExportExcel};
@@ -91,6 +91,13 @@ pub async fn export_excel_data(
 }
 
 pub async fn calculate_bonus(state: &AppState) -> Result<()> {
+    let points_per_cny = open_source_internship::Entity::find()
+        .order_by_desc(open_source_internship::Column::UpdatedAt)
+        .one(state.score_stg().get_connection())
+        .await?
+        .map(|config| config.points_per_cny)
+        .ok_or_else(|| anyhow::anyhow!("open_source_internship config not found"))?;
+
     let now = Utc::now().naive_utc();
     let calculate_month = get_last_month(now.into());
     let monthly_records = state
@@ -115,7 +122,7 @@ pub async fn calculate_bonus(state: &AppState) -> Result<()> {
         };
         let mut a_model: monthly_score::ActiveModel = model.clone().into();
         a_model.consumption_score = Set(consume_score);
-        a_model.exchanged = Set(consume_score * 50);
+        a_model.exchanged = Set(consume_score * points_per_cny);
         a_model.update_at = Set(Utc::now().naive_utc());
         state.score_stg().update_score(a_model.clone()).await?;
         let last_month: ScoreDto = a_model.try_into_model()?.into();
