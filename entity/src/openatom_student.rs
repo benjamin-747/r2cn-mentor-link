@@ -10,16 +10,8 @@ pub struct Model {
     pub id: String,
     #[sea_orm(column_type = "Text")]
     pub user_id: String,
-    #[sea_orm(column_type = "Text", nullable, unique)]
-    pub atomgit_user_id: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub atomgit_username: Option<String>,
     #[sea_orm(column_type = "Text")]
     pub student_status: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub test_issue_url: Option<String>,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub test_issue_platform: Option<String>,
     pub contract_start_at: Option<DateTime>,
     pub contract_end_at: Option<DateTime>,
     pub submitted_at: Option<DateTime>,
@@ -27,6 +19,8 @@ pub struct Model {
     pub rejected_at: Option<DateTime>,
     pub created_at: DateTime,
     pub updated_at: DateTime,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub full_name: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

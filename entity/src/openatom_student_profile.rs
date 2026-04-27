@@ -45,15 +45,17 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub github_id: String,
     #[sea_orm(column_type = "Text")]
+    pub atomgit_email: String,
+    #[sea_orm(column_type = "Text")]
+    pub atomgit_account_id: String,
+    #[sea_orm(column_type = "Text")]
     pub test_issue_url: String,
     pub version: i32,
     pub is_latest: bool,
     pub created_at: DateTime,
     pub updated_at: DateTime,
     #[sea_orm(column_type = "Text")]
-    pub atomgit_email: String,
-    #[sea_orm(column_type = "Text")]
-    pub atomgit_account_id: String,
+    pub full_name: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

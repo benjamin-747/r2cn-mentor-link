@@ -5,8 +5,6 @@ use entity::{account, openatom_student, user};
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
-use crate::ospp::ValidateStudentRes;
-
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct StudentProfile {
     pub student_id: String,
@@ -110,35 +108,6 @@ impl StudentStorage {
             .one(self.get_connection())
             .await?;
         Ok(account.and_then(|a| a.login))
-    }
-
-    pub async fn validate_student_by_login(
-        &self,
-        login: &str,
-    ) -> Result<ValidateStudentRes, anyhow::Error> {
-        let Some(student_id) = self.get_student_id_by_login(login).await? else {
-            return Ok(ValidateStudentRes::default());
-        };
-        let profile = self.get_student_by_student_id(&student_id).await?;
-        let Some(profile) = profile else {
-            return Ok(ValidateStudentRes::default());
-        };
-        let student = openatom_student::Entity::find_by_id(student_id)
-            .one(self.get_connection())
-            .await?;
-        let success = student
-            .as_ref()
-            .map(|s| matches!(s.student_status.to_lowercase().as_str(), "approved"))
-            .unwrap_or(false);
-
-        Ok(ValidateStudentRes {
-            success,
-            student_name: Some(profile.student_name),
-            contract_deadline: student
-                .and_then(|s| s.contract_end_at)
-                .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()),
-            email: Some(profile.email),
-        })
     }
 
     async fn lookup_account_id(&self, user_id: &str) -> Result<Option<String>, anyhow::Error> {
