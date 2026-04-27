@@ -41,6 +41,10 @@ pub enum Relation {
     BlogPost,
     #[sea_orm(has_many = "super::credit_transaction::Entity")]
     CreditTransaction,
+    #[sea_orm(has_many = "super::open_source_project_maintainer::Entity")]
+    OpenSourceProjectMaintainer,
+    #[sea_orm(has_one = "super::openatom_mentor::Entity")]
+    OpenatomMentor,
     #[sea_orm(has_many = "super::openatom_review_log::Entity")]
     OpenatomReviewLog,
     #[sea_orm(has_many = "super::openatom_student::Entity")]
@@ -68,6 +72,18 @@ impl Related<super::blog_post::Entity> for Entity {
 impl Related<super::credit_transaction::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::CreditTransaction.def()
+    }
+}
+
+impl Related<super::open_source_project_maintainer::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OpenSourceProjectMaintainer.def()
+    }
+}
+
+impl Related<super::openatom_mentor::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OpenatomMentor.def()
     }
 }
 

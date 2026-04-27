@@ -1,4 +1,4 @@
-name: R2CN Bot API deploy
+name: OpenAtom Internship Bot API deploy
 on:
   push:
     branches:
