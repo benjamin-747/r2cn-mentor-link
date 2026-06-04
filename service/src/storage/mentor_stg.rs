@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use chrono::NaiveDateTime;
-use entity::{account, openatom_mentor, user};
+use entity::{account, opensource_mentor, user};
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
@@ -31,8 +31,8 @@ impl MentorStorage {
     }
 
     pub async fn get_approved_mentors(&self) -> Result<Vec<MentorRes>, anyhow::Error> {
-        let records = openatom_mentor::Entity::find()
-            .filter(openatom_mentor::Column::MentorStatus.eq("approved"))
+        let records = opensource_mentor::Entity::find()
+            .filter(opensource_mentor::Column::MentorStatus.eq("approved"))
             .all(self.get_connection())
             .await?;
         let mut result = Vec::with_capacity(records.len());
@@ -55,8 +55,8 @@ impl MentorStorage {
         let Some(account) = account else {
             return Ok(None);
         };
-        let mentor = openatom_mentor::Entity::find()
-            .filter(openatom_mentor::Column::UserId.eq(account.user_id))
+        let mentor = opensource_mentor::Entity::find()
+            .filter(opensource_mentor::Column::UserId.eq(account.user_id))
             .one(self.get_connection())
             .await?;
         let Some(mentor) = mentor else {
@@ -80,7 +80,7 @@ impl MentorStorage {
 
     async fn resolve_mentor_profile(
         &self,
-        mentor: openatom_mentor::Model,
+        mentor: opensource_mentor::Model,
     ) -> Result<Option<MentorRes>, anyhow::Error> {
         let user = user::Entity::find_by_id(mentor.user_id.clone())
             .one(self.get_connection())

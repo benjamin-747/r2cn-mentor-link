@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "openatom_student")]
+#[sea_orm(table_name = "opensource_student")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
@@ -25,12 +25,14 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::openatom_review_log::Entity")]
-    OpenatomReviewLog,
-    #[sea_orm(has_many = "super::openatom_student_profile::Entity")]
-    OpenatomStudentProfile,
-    #[sea_orm(has_one = "super::openatom_student_profile_draft::Entity")]
-    OpenatomStudentProfileDraft,
+    #[sea_orm(has_many = "super::opensource_review_log::Entity")]
+    OpensourceReviewLog,
+    #[sea_orm(has_one = "super::opensource_student_contract_material::Entity")]
+    OpensourceStudentContractMaterial,
+    #[sea_orm(has_many = "super::opensource_student_profile::Entity")]
+    OpensourceStudentProfile,
+    #[sea_orm(has_one = "super::opensource_student_profile_draft::Entity")]
+    OpensourceStudentProfileDraft,
     #[sea_orm(
         belongs_to = "super::user::Entity",
         from = "Column::UserId",
@@ -41,21 +43,27 @@ pub enum Relation {
     User,
 }
 
-impl Related<super::openatom_review_log::Entity> for Entity {
+impl Related<super::opensource_review_log::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OpenatomReviewLog.def()
+        Relation::OpensourceReviewLog.def()
     }
 }
 
-impl Related<super::openatom_student_profile::Entity> for Entity {
+impl Related<super::opensource_student_contract_material::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OpenatomStudentProfile.def()
+        Relation::OpensourceStudentContractMaterial.def()
     }
 }
 
-impl Related<super::openatom_student_profile_draft::Entity> for Entity {
+impl Related<super::opensource_student_profile::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OpenatomStudentProfileDraft.def()
+        Relation::OpensourceStudentProfile.def()
+    }
+}
+
+impl Related<super::opensource_student_profile_draft::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::OpensourceStudentProfileDraft.def()
     }
 }
 

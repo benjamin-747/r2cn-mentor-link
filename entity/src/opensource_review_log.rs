@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "openatom_review_log")]
+#[sea_orm(table_name = "opensource_review_log")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false, column_type = "Text")]
     pub id: String,
@@ -26,13 +26,13 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::openatom_student::Entity",
+        belongs_to = "super::opensource_student::Entity",
         from = "Column::StudentId",
-        to = "super::openatom_student::Column::Id",
+        to = "super::opensource_student::Column::Id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
-    OpenatomStudent,
+    OpensourceStudent,
     #[sea_orm(
         belongs_to = "super::user::Entity",
         from = "Column::OperatorUserId",
@@ -43,9 +43,9 @@ pub enum Relation {
     User,
 }
 
-impl Related<super::openatom_student::Entity> for Entity {
+impl Related<super::opensource_student::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OpenatomStudent.def()
+        Relation::OpensourceStudent.def()
     }
 }
 

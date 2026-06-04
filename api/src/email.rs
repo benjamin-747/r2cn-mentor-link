@@ -1,20 +1,22 @@
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
-use std::{env, fs, vec};
+use std::{
+    collections::HashSet,
+    env, fs,
+    path::{Path, PathBuf},
+    vec,
+};
 
 use anyhow::{Context, Error};
 use axum::extract::State;
 use chrono::{Datelike, NaiveDate};
-use entity::openatom_notification_preference;
-use entity::sea_orm_active_enums::TaskStatus;
-use entity::task;
-use lettre::message::{Attachment, Body, MultiPart, SinglePart, header};
-use lettre::transport::smtp::authentication::Credentials;
-use lettre::{Message, SmtpTransport, Transport};
+use entity::{opensource_notification_preference, sea_orm_active_enums::TaskStatus, task};
+use lettre::{
+    Message, SmtpTransport, Transport,
+    message::{Attachment, Body, MultiPart, SinglePart, header},
+    transport::smtp::authentication::Credentials,
+};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde_json::json;
-use service::model::score::ScoreDto;
-use service::storage::student_stg::StudentProfile;
+use service::{model::score::ScoreDto, storage::student_stg::StudentProfile};
 use tera::Tera;
 
 use crate::AppState;
@@ -36,7 +38,7 @@ enum NotificationKind {
 }
 
 fn is_preference_enabled(
-    preference: &openatom_notification_preference::Model,
+    preference: &opensource_notification_preference::Model,
     kind: NotificationKind,
 ) -> bool {
     match kind {
@@ -55,8 +57,8 @@ async fn is_notification_enabled(state: &AppState, user_id: &str, kind: Notifica
         return false;
     }
 
-    match openatom_notification_preference::Entity::find()
-        .filter(openatom_notification_preference::Column::UserId.eq(user_id))
+    match opensource_notification_preference::Entity::find()
+        .filter(opensource_notification_preference::Column::UserId.eq(user_id))
         .one(state.context.services.student_stg.get_connection())
         .await
     {
@@ -715,14 +717,14 @@ pub mod util {
 mod test {
     use std::env;
 
-    use crate::email::EmailContent;
-
-    use super::{EmailSender, cid_images_for_template, create_cid_attachment, render_mjml};
     use lettre::{
         Message, SmtpTransport, Transport,
         message::{MultiPart, SinglePart, header},
         transport::smtp::authentication::Credentials,
     };
+
+    use super::{EmailSender, cid_images_for_template, create_cid_attachment, render_mjml};
+    use crate::email::EmailContent;
 
     #[test]
     pub fn test_local_temp_email() {

@@ -43,14 +43,14 @@ pub enum Relation {
     CreditTransaction,
     #[sea_orm(has_many = "super::open_source_project_maintainer::Entity")]
     OpenSourceProjectMaintainer,
-    #[sea_orm(has_one = "super::openatom_mentor::Entity")]
-    OpenatomMentor,
-    #[sea_orm(has_one = "super::openatom_notification_preference::Entity")]
-    OpenatomNotificationPreference,
-    #[sea_orm(has_many = "super::openatom_review_log::Entity")]
-    OpenatomReviewLog,
-    #[sea_orm(has_many = "super::openatom_student::Entity")]
-    OpenatomStudent,
+    #[sea_orm(has_one = "super::opensource_mentor::Entity")]
+    OpensourceMentor,
+    #[sea_orm(has_one = "super::opensource_notification_preference::Entity")]
+    OpensourceNotificationPreference,
+    #[sea_orm(has_many = "super::opensource_review_log::Entity")]
+    OpensourceReviewLog,
+    #[sea_orm(has_many = "super::opensource_student::Entity")]
+    OpensourceStudent,
     #[sea_orm(has_many = "super::order::Entity")]
     Order,
     #[sea_orm(has_many = "super::session::Entity")]
@@ -83,27 +83,27 @@ impl Related<super::open_source_project_maintainer::Entity> for Entity {
     }
 }
 
-impl Related<super::openatom_mentor::Entity> for Entity {
+impl Related<super::opensource_mentor::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OpenatomMentor.def()
+        Relation::OpensourceMentor.def()
     }
 }
 
-impl Related<super::openatom_notification_preference::Entity> for Entity {
+impl Related<super::opensource_notification_preference::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OpenatomNotificationPreference.def()
+        Relation::OpensourceNotificationPreference.def()
     }
 }
 
-impl Related<super::openatom_review_log::Entity> for Entity {
+impl Related<super::opensource_review_log::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OpenatomReviewLog.def()
+        Relation::OpensourceReviewLog.def()
     }
 }
 
-impl Related<super::openatom_student::Entity> for Entity {
+impl Related<super::opensource_student::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OpenatomStudent.def()
+        Relation::OpensourceStudent.def()
     }
 }
 

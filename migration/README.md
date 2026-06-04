@@ -2,7 +2,7 @@ sea-orm-cli migrate generate
 
 
 # Generate entity files
-sea-orm-cli generate entity -u postgres://postgres:postgres@localhost/tinyship -o entity/src --with-serde both
+sea-orm-cli generate entity -u postgres://postgres:postgres@localhost/internship -o entity/src --with-serde both
 
 
 
