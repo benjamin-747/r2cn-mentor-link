@@ -1,4 +1,4 @@
-name: OpenAtom Internship Bot API deploy
+name: OpenSource Internship Bot API deploy
 on:
   push:
     branches:
@@ -33,7 +33,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           REGISTRY_ALIAS: m8q5m4u3
-          REPOSITORY: openatom-internship/api
+          REPOSITORY: opensource-internship/api
           IMAGE_HASH_TAG: ${{ github.sha }}
         run: |
 

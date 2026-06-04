@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use chrono::NaiveDate;
-use entity::{account, openatom_student, user};
+use entity::{account, opensource_student, user};
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +30,7 @@ impl StudentStorage {
     }
 
     pub async fn get_active_students(&self) -> Result<Vec<StudentProfile>, anyhow::Error> {
-        let students = openatom_student::Entity::find()
+        let students = opensource_student::Entity::find()
             .all(self.get_connection())
             .await?;
         let mut result = Vec::with_capacity(students.len());
@@ -56,7 +56,7 @@ impl StudentStorage {
         &self,
         student_id: &str,
     ) -> Result<Option<StudentProfile>, anyhow::Error> {
-        let student = openatom_student::Entity::find_by_id(student_id.to_owned())
+        let student = opensource_student::Entity::find_by_id(student_id.to_owned())
             .one(self.get_connection())
             .await?;
         if let Some(student) = student {
@@ -86,8 +86,8 @@ impl StudentStorage {
             .one(self.get_connection())
             .await?;
         if let Some(account) = account {
-            let student = openatom_student::Entity::find()
-                .filter(openatom_student::Column::UserId.eq(account.user_id))
+            let student = opensource_student::Entity::find()
+                .filter(opensource_student::Column::UserId.eq(account.user_id))
                 .one(self.get_connection())
                 .await?;
             return Ok(student.map(|s| s.id));
@@ -99,7 +99,7 @@ impl StudentStorage {
         &self,
         student_id: &str,
     ) -> Result<Option<String>, anyhow::Error> {
-        let student = openatom_student::Entity::find_by_id(student_id.to_owned())
+        let student = opensource_student::Entity::find_by_id(student_id.to_owned())
             .one(self.get_connection())
             .await?;
         let Some(student) = student else {

@@ -5,7 +5,6 @@ use axum::{
     response::Response,
     routing::{get, post},
 };
-
 use common::{errors::CommonError, model::CommonResult};
 
 use crate::{AppState, application::score, model::score::ExportExcel};
